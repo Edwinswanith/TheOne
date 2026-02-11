@@ -1,0 +1,32 @@
+{
+  "sources": [
+    {
+      "url": "https://example.com/pricing",
+      "title": "Competitor pricing",
+      "snippets": ["Starter $49", "Team $149"],
+      "quality_score": 0.82
+    },
+    {
+      "url": "https://example.com/pricing/",
+      "title": "Competitor pricing duplicate",
+      "snippets": ["Annual discount available"],
+      "quality_score": 0.91
+    }
+  ],
+  "competitors": [
+    {"name": "DealFlow", "strength": "pipeline automation"},
+    {"name": "CloseBot", "strength": "follow-up reminders"}
+  ],
+  "pricing_anchors": [
+    {"competitor": "DealFlow", "metric": "per_seat", "price": 49},
+    {"competitor": "CloseBot", "metric": "per_usage", "price": 0.02}
+  ],
+  "messaging_patterns": [
+    {"pattern": "Close more deals with follow-up automation"},
+    {"pattern": "Remove manual CRM busywork"}
+  ],
+  "channel_signals": [
+    {"channel": "linkedin_outbound", "signal": "high"},
+    {"channel": "content_seo", "signal": "medium"}
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "icp": {
+    "recommended_option_id": "icp_opt_1",
+    "options": [
+      {
+        "id": "icp_opt_1",
+        "label": "Mid-market sales teams",
+        "details": {"company_size": "50-200", "buyer_role": "Head of Sales"},
+        "pros": ["Clear pain"],
+        "cons": ["Needs onboarding"],
+        "risks": ["Longer cycle"]
+      },
+      {
+        "id": "icp_opt_2",
+        "label": "SMB founders",
+        "details": {"company_size": "1-20", "buyer_role": "Founder"},
+        "pros": ["Fast cycle"],
+        "cons": ["Lower ACV"],
+        "risks": ["Churn risk"]
+      }
+    ],
+    "rationale": "Best evidence-backed fit from current source set."
+  },
+  "positioning": {
+    "recommended_option_id": "pos_opt_1",
+    "options": [
+      {
+        "id": "pos_opt_1",
+        "label": "Leakage recovery wedge",
+        "details": {"wedge": "Recover stalled deals"},
+        "pros": ["Direct ROI framing"],
+        "cons": ["Requires outcome proof"],
+        "risks": ["Proof burden"]
+      }
+    ],
+    "rationale": "Aligns with buyer pain from intake and evidence."
+  },
+  "pricing": {
+    "recommended_option_id": "price_opt_1",
+    "options": [
+      {
+        "id": "price_opt_1",
+        "label": "Per seat",
+        "details": {"metric": "per_seat", "tiers": [49, 149]},
+        "pros": ["Simple"],
+        "cons": ["Seat objections"],
+        "risks": ["Limited expansion"]
+      }
+    ],
+    "rationale": "Closest match to evidence anchors."
+  },
+  "channels": {
+    "recommended_option_id": "chan_opt_1",
+    "options": [
+      {
+        "id": "chan_opt_1",
+        "label": "LinkedIn outbound + network",
+        "details": {"primary": "linkedin_outbound", "secondary": "founder_network"},
+        "pros": ["Fast feedback"],
+        "cons": ["Manual effort"],
+        "risks": ["Volume fatigue"]
+      }
+    ],
+    "rationale": "Strongest signal from channel evidence set."
+  },
+  "sales_motion": {
+    "recommended_option_id": "sales_opt_1",
+    "options": [
+      {
+        "id": "sales_opt_1",
+        "label": "Outbound-led",
+        "details": {"motion": "outbound_led"},
+        "pros": ["Control"],
+        "cons": ["Needs outreach ops"],
+        "risks": ["Reply rates"]
+      }
+    ],
+    "rationale": "Best fit for current ICP/channel combination."
+  }
+}

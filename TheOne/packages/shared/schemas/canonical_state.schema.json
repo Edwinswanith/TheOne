@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gtmgraph.ai/schemas/canonical_state.schema.json",
+  "title": "CanonicalState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "idea",
+    "constraints",
+    "inputs",
+    "evidence",
+    "decisions",
+    "pillars",
+    "graph",
+    "risks",
+    "execution",
+    "telemetry"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "scenario_id",
+        "run_id",
+        "schema_version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "project_id": { "type": "string", "minLength": 1 },
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "run_id": { "type": "string", "minLength": 1 },
+        "schema_version": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" },
+        "updated_by": { "type": "string" }
+      }
+    },
+    "idea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "one_liner", "problem", "target_region", "category"],
+      "properties": {
+        "name": { "type": "string" },
+        "one_liner": { "type": "string" },
+        "problem": { "type": "string" },
+        "target_region": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": ["b2b_saas", "b2b_services", "b2c"]
+        },
+        "domain": { "type": "string" }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team_size", "timeline_weeks", "budget_usd_monthly", "compliance_level"],
+      "properties": {
+        "team_size": { "type": "integer", "minimum": 1 },
+        "timeline_weeks": { "type": "integer", "minimum": 1 },
+        "budget_usd_monthly": { "type": "number", "minimum": 0 },
+        "compliance_level": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high"]
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intake_answers", "open_questions"],
+      "properties": {
+        "intake_answers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/IntakeAnswer" }
+        },
+        "open_questions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/OpenQuestion" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "competitors", "pricing_anchors", "messaging_patterns", "channel_signals"],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceSource" }
+        },
+        "competitors": { "type": "array", "items": { "type": "object" } },
+        "pricing_anchors": { "type": "array", "items": { "type": "object" } },
+        "messaging_patterns": { "type": "array", "items": { "type": "object" } },
+        "channel_signals": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["icp", "positioning", "pricing", "channels", "sales_motion"],
+      "properties": {
+        "icp": { "$ref": "#/$defs/DecisionBlock" },
+        "positioning": { "$ref": "#/$defs/DecisionBlock" },
+        "pricing": {
+          "allOf": [
+            { "$ref": "#/$defs/DecisionBlock" },
+            {
+              "type": "object",
+              "properties": {
+                "metric": { "type": "string" },
+                "tiers": { "type": "array", "items": { "type": "object" } }
+              }
+            }
+          ]
+        },
+        "channels": {
+          "allOf": [
+            { "$ref": "#/$defs/DecisionBlock" },
+            {
+              "type": "object",
+              "properties": {
+                "primary": { "type": "string" },
+                "secondary": { "type": "string" },
+                "primary_channels": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          ]
+        },
+        "sales_motion": {
+          "allOf": [
+            { "$ref": "#/$defs/DecisionBlock" },
+            {
+              "type": "object",
+              "properties": {
+                "motion": {
+                  "type": "string",
+                  "enum": ["outbound_led", "inbound_led", "plg", "partner_led", "unset"]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "pillars": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market_to_money", "product", "execution", "people_and_cash"],
+      "properties": {
+        "market_to_money": { "$ref": "#/$defs/PillarBlock" },
+        "product": { "$ref": "#/$defs/PillarBlock" },
+        "execution": { "$ref": "#/$defs/PillarBlock" },
+        "people_and_cash": { "$ref": "#/$defs/PillarBlock" }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "edges", "groups"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GraphNode" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GraphEdge" }
+        },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GraphGroup" }
+        }
+      }
+    },
+    "risks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contradictions", "missing_proof", "high_risk_flags"],
+      "properties": {
+        "contradictions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Contradiction" }
+        },
+        "missing_proof": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "high_risk_flags": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chosen_track", "next_actions", "experiments", "assets"],
+      "properties": {
+        "chosen_track": {
+          "type": "string",
+          "enum": ["validation_sprint", "outbound_sprint", "landing_waitlist", "pilot_onboarding", "unset"]
+        },
+        "next_actions": { "type": "array", "items": { "type": "object" } },
+        "experiments": { "type": "array", "items": { "type": "object" } },
+        "assets": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_timings", "token_spend", "errors"],
+      "properties": {
+        "agent_timings": { "type": "array", "items": { "type": "object" } },
+        "token_spend": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "by_agent"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "by_agent": { "type": "array", "items": { "type": "object" } }
+          }
+        },
+        "errors": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  },
+  "$defs": {
+    "DecisionBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["selected_option_id", "options", "recommended_option_id", "override"],
+      "properties": {
+        "selected_option_id": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "object" } },
+        "recommended_option_id": { "type": "string" },
+        "override": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["is_custom", "justification"],
+          "properties": {
+            "is_custom": { "type": "boolean" },
+            "justification": { "type": "string" }
+          }
+        }
+      }
+    },
+    "IntakeAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question_id", "answer_type", "value", "meta"],
+      "properties": {
+        "question_id": { "type": "string" },
+        "answer_type": { "type": "string", "enum": ["mcq", "text", "number", "boolean"] },
+        "value": {},
+        "justification": { "type": "string" },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_type", "confidence", "sources"],
+          "properties": {
+            "source_type": { "type": "string", "enum": ["evidence", "inference", "assumption"] },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "sources": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "OpenQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "question", "blocking"],
+      "properties": {
+        "field": { "type": "string" },
+        "question": { "type": "string" },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "EvidenceSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "url", "normalized_url", "title", "snippets", "quality_score"],
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "normalized_url": { "type": "string" },
+        "title": { "type": "string" },
+        "snippets": { "type": "array", "items": { "type": "string" } },
+        "quality_score": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "PillarBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["summary", "nodes"],
+      "properties": {
+        "summary": { "type": "string" },
+        "nodes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "GraphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "pillar", "type", "content", "assumptions", "confidence", "evidence_refs", "dependencies", "status", "actions", "updated_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "pillar": { "type": "string" },
+        "type": { "type": "string" },
+        "content": { "type": "object" },
+        "assumptions": { "type": "array", "items": { "type": "string" } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["draft", "needs-input", "final"] },
+        "actions": { "type": "array", "items": { "type": "string" } },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "GraphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "target", "kind"],
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "kind": { "type": "string" }
+      }
+    },
+    "GraphGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "node_ids"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "node_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "severity", "message", "paths"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+        "message": { "type": "string" },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "recommended_fix": { "type": "string" }
+      }
+    }
+  }
+}

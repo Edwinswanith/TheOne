@@ -1,0 +1,11 @@
+{
+  "summary": "Prospects value speed of follow-up and direct leakage reduction metrics.",
+  "facts": [
+    {
+      "claim": "Prospects respond faster when follow-up is under 24h.",
+      "supporting_sources": ["https://example.com/pricing"],
+      "confidence": 0.8
+    }
+  ],
+  "assumptions": []
+}

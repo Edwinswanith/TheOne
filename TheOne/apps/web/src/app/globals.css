@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap');
+
+:root {
+  --paper: #f7f2e8;
+  --ink: #1f2328;
+  --graphite: #4b5563;
+  --sage: #6d8a73;
+  --sage-light: #e8f0ea;
+  --amber: #d58c2f;
+  --amber-light: #fef3e2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% -10%, #efe1c4 0%, transparent 35%),
+    radial-gradient(circle at 90% 0%, #d7e5d2 0%, transparent 30%),
+    var(--paper);
+  font-family: "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+/* Paper grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c4b89a; border-radius: 3px; }
+
+/* animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-0.5deg); }
+  75% { transform: rotate(0.5deg); }
+}
+.animate-fade-in { animation: fadeIn 0.3s ease-out both; }
+.animate-slide-in { animation: slideIn 0.25s ease-out both; }
+.animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+.animate-wiggle { animation: wiggle 0.3s ease-in-out; }
+
+/* confidence bar fills */
+.confidence-bar { transition: width 0.6s ease-out; }
+
+/* ── Sketch utilities ────────────────────────────────── */
+
+/* Asymmetric border-radius for hand-drawn feel */
+.sketch-rounded {
+  border-radius: 12px 8px 14px 6px;
+}
+
+/* Sketch border — slightly irregular using layered box-shadow */
+.sketch-border {
+  border: 1.5px solid #d4cfc2;
+  box-shadow:
+    1px 1px 0 0 rgba(0, 0, 0, 0.02),
+    -0.5px 0.5px 0 0 rgba(0, 0, 0, 0.01),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Hand-drawn underline via CSS */
+.sketch-underline {
+  text-decoration: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='8' viewBox='0 0 100 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 6 Q 15 2, 30 5 T 60 4 T 100 5' stroke='%236d8a73' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: bottom;
+  background-size: 100px 8px;
+  padding-bottom: 6px;
+}
+
+/* Accent font for hand-written labels */
+.font-accent {
+  font-family: "Caveat", cursive;
+}
+
+/* Sketch card hover */
+.sketch-card {
+  border-radius: 12px 8px 14px 6px;
+  border: 1.5px solid #d4cfc2;
+  box-shadow:
+    1px 1px 0 0 rgba(0, 0, 0, 0.02),
+    -0.5px 0.5px 0 0 rgba(0, 0, 0, 0.01),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.sketch-card:hover {
+  box-shadow:
+    1px 2px 0 0 rgba(0, 0, 0, 0.03),
+    -0.5px 1px 0 0 rgba(0, 0, 0, 0.02),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Dashed sketch border for dividers */
+.sketch-divider {
+  border-style: dashed;
+  border-color: #d4cfc2;
+}
