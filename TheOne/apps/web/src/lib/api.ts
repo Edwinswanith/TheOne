@@ -50,9 +50,22 @@ export interface CreateProjectResponse {
   scenario: { id: string; name: string; created_at: string; updated_at: string };
 }
 
+export interface CreateFromContextPayload {
+  context: string;
+  project_name?: string;
+}
+
+export interface CreateFromContextResponse {
+  project: ProjectSummary;
+  scenario: { id: string; name: string; created_at: string; updated_at: string };
+  pre_collected_fields: string[];
+}
+
 export const listProjects = () => apiFetch<ProjectSummary[]>("/projects");
 export const createProject = (p: CreateProjectPayload) =>
   apiFetch<CreateProjectResponse>("/projects", { method: "POST", body: JSON.stringify(p) });
+export const createProjectFromContext = (p: CreateFromContextPayload) =>
+  apiFetch<CreateFromContextResponse>("/projects/from-context", { method: "POST", body: JSON.stringify(p) });
 
 /* ── Scenarios ─────────────────────────────────────────────── */
 export interface ScenarioDetail {
@@ -87,10 +100,46 @@ export const getRun = (runId: string) =>
   apiFetch<{ run_id: string; status: string; checkpoint_index: number }>(`/runs/${runId}`);
 
 /* ── Intake ────────────────────────────────────────────────── */
+export interface IntakeQuestionOption {
+  id: string;
+  label: string;
+  detail: string;
+  recommended: boolean;
+}
+
+export interface IntakeQuestion {
+  question: string;
+  options: IntakeQuestionOption[];
+  reasoning: string;
+}
+
+export type IntakeQuestionsMap = Record<string, IntakeQuestion>;
+
+export const getIntakeQuestions = (scenarioId: string) =>
+  apiFetch<{ scenario_id: string; questions: IntakeQuestionsMap }>(
+    `/scenarios/${scenarioId}/intake/questions`
+  );
+
 export const submitIntake = (scenarioId: string, answers: IntakeAnswer[]) =>
   apiFetch(`/scenarios/${scenarioId}/intake`, {
     method: "POST",
     body: JSON.stringify({ answers }),
+  });
+
+/* ── Chat Intake ──────────────────────────────────────────── */
+export interface ChatResponse {
+  message: string;
+  field_being_asked: string | null;
+  suggestions: string[];
+  readiness: number;
+  ready: boolean;
+  collected_fields: string[];
+}
+
+export const sendChat = (scenarioId: string, message: string, fieldContext?: string) =>
+  apiFetch<ChatResponse>(`/scenarios/${scenarioId}/chat`, {
+    method: "POST",
+    body: JSON.stringify({ message, field_context: fieldContext || null }),
   });
 
 /* ── Decisions ─────────────────────────────────────────────── */
@@ -133,6 +182,21 @@ export async function transcribeAudio(audioBlob: Blob): Promise<{ text: string }
   return res.json() as Promise<{ text: string }>;
 }
 
+/* ── Scenario Compare ─────────────────────────────────────── */
+export interface CompareResult {
+  left_scenario_id: string;
+  right_scenario_id: string;
+  decision_diff: Record<string, { left: string; right: string }>;
+  confidence_delta: number;
+  risk_delta: number;
+}
+
+export const compareScenarios = (leftId: string, rightId: string) =>
+  apiFetch<CompareResult>("/scenarios/compare", {
+    method: "POST",
+    body: JSON.stringify({ left_scenario_id: leftId, right_scenario_id: rightId }),
+  });
+
 /* ── Shared types ──────────────────────────────────────────── */
 export interface IntakeAnswer {
   question_id: string;
@@ -167,7 +231,7 @@ export interface CanonicalState {
   constraints: Record<string, unknown>;
   inputs: { intake_answers: IntakeAnswer[]; open_questions: { field: string; question: string; blocking: boolean }[] };
   evidence: { sources: unknown[]; competitors: unknown[]; pricing_anchors: unknown[] };
-  decisions: Record<string, { selected_option_id: string; options?: unknown[]; override?: Record<string, unknown> }>;
+  decisions: Record<string, { selected_option_id: string; recommended_option_id?: string; options?: unknown[]; override?: Record<string, unknown> }>;
   pillars: Record<string, { summary: string }>;
   graph: { nodes: GraphNode[]; edges: unknown[]; groups: GraphGroup[] };
   risks: { contradictions: unknown[]; missing_proof: unknown[]; high_risk_flags: unknown[] };

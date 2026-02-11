@@ -57,7 +57,7 @@ export function TopBar() {
 
   function handleRun() {
     if (!intakeComplete) {
-      setScreen("intake");
+      setScreen("chat");
       return;
     }
     startRun();

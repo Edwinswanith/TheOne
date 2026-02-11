@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { RunEvent } from "@/lib/types";
 import type {
   CanonicalState,
+  ChatResponse,
   CreateProjectPayload,
   GraphNode,
   GraphGroup,
@@ -13,7 +14,14 @@ import type {
 import * as api from "@/lib/api";
 import { subscribeToRun } from "@/lib/sse";
 
-type Screen = "home" | "intake" | "workspace";
+type Screen = "home" | "chat" | "workspace" | "decisions";
+
+interface ChatMessage {
+  role: "assistant" | "user";
+  content: string;
+  field?: string;
+  suggestions?: string[];
+}
 
 const REQUIRED_INTAKE = [
   "buyer_role",
@@ -45,6 +53,11 @@ interface AppState {
   projects: ProjectSummary[];
   loadProjects: () => Promise<void>;
   createProject: (p: CreateProjectPayload) => Promise<void>;
+  createFromContext: (context: string, projectName?: string) => Promise<void>;
+
+  /* creation progress */
+  creatingFromContext: boolean;
+  creationProgress: string;
 
   /* active workspace */
   activeProjectId: string | null;
@@ -71,6 +84,15 @@ interface AppState {
   selectedNodeId: string | null;
   selectNode: (id: string | null) => void;
 
+  /* chat intake */
+  chatMessages: ChatMessage[];
+  chatField: string | null;
+  chatSuggestions: string[];
+  chatReadiness: number;
+  chatLoading: boolean;
+  sendChatMessage: (message: string) => Promise<void>;
+  initChat: () => Promise<void>;
+
   /* errors */
   error: string | null;
   clearError: () => void;
@@ -78,6 +100,7 @@ interface AppState {
 
 const AGENT_NAMES = [
   "evidence_collector",
+  "competitive_teardown_agent",
   "icp_agent",
   "positioning_agent",
   "pricing_agent",
@@ -118,6 +141,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  createFromContext: async (context, projectName) => {
+    const messages = [
+      "Analyzing your idea...",
+      "Identifying target market...",
+      "Mapping competitive landscape...",
+      "Structuring constraints...",
+      "Preparing your workspace...",
+    ];
+    let idx = 0;
+    set({ creatingFromContext: true, creationProgress: messages[0], error: null });
+
+    const interval = setInterval(() => {
+      idx = (idx + 1) % messages.length;
+      set({ creationProgress: messages[idx] });
+    }, 2000);
+
+    try {
+      const res = await api.createProjectFromContext({ context, project_name: projectName });
+      clearInterval(interval);
+      set((s) => ({
+        projects: [...s.projects, res.project],
+        creatingFromContext: false,
+        creationProgress: "",
+      }));
+      await get().openProject(res.project.id, res.scenario.id);
+    } catch (e) {
+      clearInterval(interval);
+      set({ error: (e as Error).message, creatingFromContext: false, creationProgress: "" });
+    }
+  },
+
+  creatingFromContext: false,
+  creationProgress: "",
+
   activeProjectId: null,
   activeScenarioId: null,
   scenarioState: null,
@@ -125,7 +182,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   openProject: async (projectId, scenarioId) => {
     try {
       const detail = await api.getScenario(scenarioId);
-      const screen = needsIntake(detail.state) ? "intake" : "workspace";
+      const screen = needsIntake(detail.state) ? "chat" : "workspace";
       set({
         activeProjectId: projectId,
         activeScenarioId: scenarioId,
@@ -217,7 +274,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         if (event.type === "run_completed") {
           set({ runStatus: "completed" });
-          get().refreshScenario();
+          get().refreshScenario().then(() => {
+            set({ screen: "decisions" });
+          });
         }
         if (event.type === "run_blocked") {
           set({ runStatus: "blocked" });
@@ -257,6 +316,65 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectedNodeId: null,
   selectNode: (id) => set({ selectedNodeId: id }),
+
+  chatMessages: [],
+  chatField: null,
+  chatSuggestions: [],
+  chatReadiness: 0,
+  chatLoading: false,
+
+  initChat: async () => {
+    const sid = get().activeScenarioId;
+    if (!sid) return;
+    if (get().chatMessages.length > 0) return;
+    set({ chatLoading: true });
+    try {
+      // Send an empty-ish greeting to get the first AI question
+      const res = await api.sendChat(sid, "Hi, I'm ready to get started.");
+      set({
+        chatMessages: [
+          { role: "user", content: "Hi, I'm ready to get started." },
+          { role: "assistant", content: res.message, field: res.field_being_asked ?? undefined, suggestions: res.suggestions },
+        ],
+        chatField: res.field_being_asked,
+        chatSuggestions: res.suggestions,
+        chatReadiness: res.readiness,
+        chatLoading: false,
+      });
+    } catch (e) {
+      set({ chatLoading: false, error: (e as Error).message });
+    }
+  },
+
+  sendChatMessage: async (message) => {
+    const sid = get().activeScenarioId;
+    if (!sid) return;
+    const userMsg: ChatMessage = { role: "user", content: message };
+    set((s) => ({ chatMessages: [...s.chatMessages, userMsg], chatLoading: true }));
+    try {
+      const res = await api.sendChat(sid, message, get().chatField ?? undefined);
+      const aiMsg: ChatMessage = {
+        role: "assistant",
+        content: res.message,
+        field: res.field_being_asked ?? undefined,
+        suggestions: res.suggestions,
+      };
+      set((s) => ({
+        chatMessages: [...s.chatMessages, aiMsg],
+        chatField: res.field_being_asked,
+        chatSuggestions: res.suggestions,
+        chatReadiness: res.readiness,
+        chatLoading: false,
+      }));
+      if (res.ready) {
+        // All fields collected — submit intake and transition
+        await get().refreshScenario();
+        set({ screen: "workspace" });
+      }
+    } catch (e) {
+      set({ chatLoading: false, error: (e as Error).message });
+    }
+  },
 
   error: null,
   clearError: () => set({ error: null }),

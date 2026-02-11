@@ -1,23 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import type { CreateProjectPayload } from "@/lib/api";
-import { Input, TextArea, Select } from "@/components/ui/form-fields";
-import { Plus, TrendingUp, Box, Rocket, Users } from "lucide-react";
-
-const CATEGORIES = [
-  { value: "b2b_saas", label: "B2B SaaS" },
-  { value: "b2b_services", label: "B2B Services" },
-  { value: "b2c", label: "B2C" },
-];
-
-const COMPLIANCE = [
-  { value: "none", label: "None" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-];
+import { CreationProgress } from "@/components/creation-progress";
+import { useSpeechInput } from "@/hooks/use-speech-input";
+import { Plus, TrendingUp, Box, Rocket, Users, Mic, Square, Loader2, AudioLines } from "lucide-react";
 
 const PILLAR_ICONS = [
   { name: "Market to Money", icon: TrendingUp, desc: "ICP, positioning, pricing, channels" },
@@ -29,41 +16,34 @@ const PILLAR_ICONS = [
 export function HomeScreen() {
   const projects = useAppStore((s) => s.projects);
   const loadProjects = useAppStore((s) => s.loadProjects);
-  const doCreateProject = useAppStore((s) => s.createProject);
+  const createFromContext = useAppStore((s) => s.createFromContext);
+  const creatingFromContext = useAppStore((s) => s.creatingFromContext);
   const openProject = useAppStore((s) => s.openProject);
   const error = useAppStore((s) => s.error);
   const clearError = useAppStore((s) => s.clearError);
-  const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [context, setContext] = useState("");
+  const [projectName, setProjectName] = useState("");
+
+  const onTranscript = useCallback((text: string) => {
+    setContext((prev) => (prev ? `${prev} ${text}` : text));
+  }, []);
+  const { state: speechState, interim, elapsed, toggle: toggleSpeech, supported: speechSupported } = useSpeechInput(onTranscript);
 
   useEffect(() => {
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (creatingFromContext) {
+    return <CreationProgress />;
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setCreating(true);
+    if (context.trim().length < 10) return;
     clearError();
-    const fd = new FormData(e.currentTarget);
-    const payload: CreateProjectPayload = {
-      project_name: fd.get("project_name") as string,
-      idea: {
-        name: fd.get("idea_name") as string,
-        one_liner: fd.get("one_liner") as string,
-        problem: fd.get("problem") as string,
-        target_region: fd.get("region") as string,
-        category: fd.get("category") as string,
-      },
-      constraints: {
-        team_size: Number(fd.get("team_size")) || 1,
-        timeline_weeks: Number(fd.get("timeline")) || 8,
-        budget_usd_monthly: Number(fd.get("budget")) || 0,
-        compliance_level: fd.get("compliance") as string,
-      },
-    };
-    await doCreateProject(payload);
-    setCreating(false);
+    await createFromContext(context.trim(), projectName.trim() || undefined);
   }
 
   return (
@@ -98,7 +78,7 @@ export function HomeScreen() {
             </div>
             <div>
               <p className="text-lg font-semibold text-ink">New Project</p>
-              <p className="text-sm text-graphite">Start with your idea and constraints</p>
+              <p className="text-sm text-graphite">Describe your idea and we&apos;ll build your GTM plan</p>
             </div>
           </button>
         ) : (
@@ -108,35 +88,128 @@ export function HomeScreen() {
           >
             <h2 className="text-2xl font-semibold text-ink mb-6">Create Project</h2>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              {/* Left: Idea */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-accent font-semibold tracking-wider text-graphite">Idea</h3>
-                <Input name="project_name" label="Project Name" placeholder="My GTM Project" required voiceEnabled />
-                <Input name="idea_name" label="Product Name" placeholder="PulsePilot" required voiceEnabled />
-                <Input name="one_liner" label="One-Liner" placeholder="AI assistant that turns calls into follow-ups" required voiceEnabled />
-                <TextArea name="problem" label="Problem" placeholder="Teams forget follow-ups and lose deals" required voiceEnabled />
-                <Input name="region" label="Region" placeholder="US, UK, EU..." required voiceEnabled />
-                <Select name="category" label="Category" options={CATEGORIES} />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="project_name" className="block text-xs font-medium text-graphite mb-1">
+                  Project name (optional)
+                </label>
+                <input
+                  id="project_name"
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="My GTM Project"
+                  className="w-full sketch-rounded border border-stone-300 bg-white px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-sage focus:outline-none focus:ring-2 focus:ring-sage/20"
+                />
               </div>
 
-              {/* Right: Constraints */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-accent font-semibold tracking-wider text-graphite">Constraints</h3>
-                <Input name="team_size" label="Team Size" type="number" placeholder="2" defaultValue="2" />
-                <Input name="timeline" label="Timeline (weeks)" type="number" placeholder="8" defaultValue="8" />
-                <Input name="budget" label="Monthly Budget (USD)" type="number" placeholder="500" defaultValue="500" />
-                <Select name="compliance" label="Compliance Level" options={COMPLIANCE} />
+              <div>
+                <label htmlFor="context" className="block text-xs font-medium text-graphite mb-1">
+                  Describe your idea
+                </label>
+                <textarea
+                  id="context"
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  rows={6}
+                  placeholder={"Tell us about your product idea, the problem it solves, who it's for, and any context about your market.\n\nFor example: \"We're building an AI-powered call assistant for B2B sales teams. It listens to sales calls, auto-generates follow-up emails, and updates the CRM. We're targeting mid-market SaaS companies (50-500 employees) in the US. The main problem is that reps forget follow-ups and lose deals. We have a team of 3, $2k/month budget, and want to launch in 8 weeks.\""}
+                  className="w-full sketch-rounded border border-stone-300 bg-white px-3 py-3 text-sm text-ink placeholder:text-stone-400 focus:border-sage focus:outline-none focus:ring-2 focus:ring-sage/20 resize-none leading-relaxed"
+                />
+
+                {/* Voice input area */}
+                {speechState === "idle" && speechSupported && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={toggleSpeech}
+                      className="flex items-center gap-2 sketch-rounded border border-stone-300 bg-white px-3.5 py-2 text-xs font-medium text-graphite transition-all hover:border-sage hover:text-sage hover:bg-sage/5"
+                    >
+                      <Mic size={14} strokeWidth={1.5} />
+                      Speak your idea
+                    </button>
+                    <span className="text-[11px] text-stone-400">or type above</span>
+                  </div>
+                )}
+
+                {/* Recording overlay */}
+                {speechState === "listening" && (
+                  <div className="mt-3 sketch-rounded border-2 border-red-200 bg-red-50/50 px-4 py-3 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="relative flex h-3 w-3">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                        </span>
+                        <span className="text-sm font-medium text-red-700">Listening...</span>
+                        <span className="font-mono text-xs text-red-400">{elapsed}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleSpeech}
+                        className="flex items-center gap-1.5 sketch-rounded bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-600"
+                      >
+                        <Square size={10} strokeWidth={2} fill="currentColor" />
+                        Stop
+                      </button>
+                    </div>
+
+                    {/* Waveform bars */}
+                    <div className="mt-3 flex items-end justify-center gap-[3px] h-8">
+                      {Array.from({ length: 24 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1 rounded-full bg-red-300"
+                          style={{
+                            animation: `waveform 0.8s ease-in-out ${i * 0.05}s infinite alternate`,
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Live interim transcript */}
+                    {interim && (
+                      <p className="mt-2 text-xs text-red-600/70 italic truncate">
+                        {interim}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Processing state */}
+                {speechState === "processing" && (
+                  <div className="mt-3 sketch-rounded border border-sage/30 bg-sage/5 px-4 py-3 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={14} strokeWidth={1.5} className="animate-spin text-sage" />
+                      <span className="text-sm font-medium text-sage">Adding to your description...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {speechState === "error" && (
+                  <div className="mt-3 sketch-rounded border border-amber-200 bg-amber-50 px-4 py-3 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <AudioLines size={14} strokeWidth={1.5} className="text-amber-500" />
+                      <span className="text-sm text-amber-700">
+                        Voice input unavailable. Please check microphone permissions.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <p className="mt-2 text-[11px] text-stone-400">
+                  Include as much context as you can — product, market, team size, budget, timeline. We&apos;ll extract the details and ask follow-up questions.
+                </p>
               </div>
             </div>
 
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="submit"
-                disabled={creating}
+                disabled={context.trim().length < 10}
                 className="sketch-rounded bg-sage px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-ink hover:shadow-md disabled:opacity-50"
               >
-                {creating ? "Creating..." : "Create & Open Workspace"}
+                Create Project
               </button>
               <button
                 type="button"
@@ -200,7 +273,14 @@ export function HomeScreen() {
           })}
         </div>
       </div>
+
+      {/* Waveform keyframes */}
+      <style jsx global>{`
+        @keyframes waveform {
+          0% { height: 4px; }
+          100% { height: 28px; }
+        }
+      `}</style>
     </div>
   );
 }
-

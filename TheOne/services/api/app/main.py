@@ -6,16 +6,18 @@ from copy import deepcopy
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from services.api.app.schemas import (
+    ChatMessageRequest,
     DecisionSelectRequest,
     ExecutionTrackRequest,
     ExportRequest,
     IntakeSubmitRequest,
     ProjectCreateRequest,
+    ProjectFromContextRequest,
     ProjectPatchRequest,
     RunResponse,
     RunStartRequest,
@@ -28,6 +30,16 @@ from services.api.app.sse import EventBus
 from services.api.app.store import MemoryStore, Run, Scenario
 from services.export.renderer import render_html_export, render_markdown_export
 from services.orchestrator.dependencies import impacted_decisions
+from services.orchestrator.chat.intake_chat import (
+    REQUIRED_FIELDS as CHAT_REQUIRED_FIELDS,
+    compute_readiness,
+    extract_field_prompt,
+    fixture_chat_response,
+    fixture_extract,
+    next_field,
+    next_question_prompt,
+)
+from services.orchestrator.tools.providers import ProviderClient
 from services.orchestrator.runtime import PipelineFailure, run_pipeline
 from services.orchestrator.state.default_state import create_default_state
 from services.orchestrator.state.validation import StateValidationError, validate_state
@@ -37,7 +49,7 @@ app = FastAPI(title="GTMGraph API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -116,6 +128,83 @@ async def create_project(payload: ProjectCreateRequest) -> dict[str, Any]:
             "created_at": scenario.created_at,
             "updated_at": scenario.updated_at,
         },
+    }
+
+
+@app.post("/projects/from-context")
+async def create_project_from_context(payload: ProjectFromContextRequest) -> dict[str, Any]:
+    provider = ProviderClient()
+    extracted = provider.extract_project_from_context(payload.context)
+
+    idea_data = extracted.get("idea", {})
+    constraints_data = extracted.get("constraints", {})
+    pre_collected = extracted.get("pre_collected_fields", {})
+
+    # Use provided project name or extracted or fallback
+    project_name = payload.project_name or extracted.get("project_name") or idea_data.get("name", "New Project")
+
+    # Fill in defaults for idea
+    idea = {
+        "name": idea_data.get("name", project_name),
+        "one_liner": idea_data.get("one_liner", ""),
+        "problem": idea_data.get("problem", ""),
+        "target_region": idea_data.get("target_region", "US"),
+        "category": idea_data.get("category", "b2b_saas"),
+    }
+
+    # Fill in defaults for constraints
+    constraints = {
+        "team_size": int(constraints_data.get("team_size", 2)),
+        "timeline_weeks": int(constraints_data.get("timeline_weeks", 8)),
+        "budget_usd_monthly": float(constraints_data.get("budget_usd_monthly", 1000)),
+        "compliance_level": constraints_data.get("compliance_level", "none"),
+    }
+
+    project = store.create_project(project_name)
+    scenario_state = create_default_state(
+        project_id=project.id,
+        scenario_id="pending",
+        idea=idea,
+        constraints=constraints,
+    )
+
+    # Store raw context in inputs
+    scenario_state["inputs"]["raw_context"] = payload.context
+
+    # Pre-populate intake answers from extracted fields
+    intake_answers = []
+    for field_id, field_data in pre_collected.items():
+        intake_answers.append({
+            "question_id": field_id,
+            "answer_type": "text",
+            "value": field_data.get("value", ""),
+            "meta": {
+                "source_type": "inference",
+                "confidence": field_data.get("confidence", 0.7),
+                "sources": [],
+            },
+        })
+    scenario_state["inputs"]["intake_answers"] = intake_answers
+
+    scenario = store.create_scenario(project.id, "Scenario A", scenario_state)
+    scenario.state["meta"]["scenario_id"] = scenario.id
+    scenario.state["meta"]["project_id"] = project.id
+    _commit_state(scenario, run_id="unset")
+
+    return {
+        "project": {
+            "id": project.id,
+            "name": project.name,
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+        },
+        "scenario": {
+            "id": scenario.id,
+            "name": scenario.name,
+            "created_at": scenario.created_at,
+            "updated_at": scenario.updated_at,
+        },
+        "pre_collected_fields": sorted(pre_collected.keys()),
     }
 
 
@@ -220,6 +309,27 @@ async def patch_scenario(scenario_id: str, payload: ScenarioPatchRequest) -> dic
     }
 
 
+@app.get("/scenarios/{scenario_id}/intake/questions")
+async def get_intake_questions(scenario_id: str) -> dict[str, Any]:
+    scenario = _get_scenario(scenario_id)
+
+    # Return cached questions if already generated
+    cached = scenario.state["inputs"].get("intake_questions")
+    if cached:
+        return {"scenario_id": scenario_id, "questions": cached}
+
+    # Generate via provider
+    provider = ProviderClient()
+    questions = provider.generate_intake_questions(scenario.state)
+
+    # Persist in state
+    scenario.state["inputs"]["intake_questions"] = questions
+    scenario.state["meta"]["updated_at"] = store.now().isoformat()
+    _commit_state(scenario, scenario.state["meta"].get("run_id", "unset"))
+
+    return {"scenario_id": scenario_id, "questions": questions}
+
+
 @app.post("/scenarios/{scenario_id}/intake")
 async def submit_intake(scenario_id: str, payload: IntakeSubmitRequest) -> dict[str, Any]:
     scenario = _get_scenario(scenario_id)
@@ -242,8 +352,110 @@ async def submit_intake(scenario_id: str, payload: IntakeSubmitRequest) -> dict[
     }
 
 
+@app.post("/scenarios/{scenario_id}/chat")
+async def chat_intake(scenario_id: str, payload: ChatMessageRequest) -> dict[str, Any]:
+    """Conversational intake: AI asks one question at a time, extracts structured fields."""
+    scenario = _get_scenario(scenario_id)
+    provider = ProviderClient()
+    idea = scenario.state.get("idea", {})
+    constraints = scenario.state.get("constraints", {})
+
+    # Init chat_history in state if missing
+    if "chat_history" not in scenario.state["inputs"]:
+        scenario.state["inputs"]["chat_history"] = []
+
+    history = scenario.state["inputs"]["chat_history"]
+
+    # Determine which fields are already collected
+    collected = {
+        a.get("question_id", "")
+        for a in scenario.state["inputs"].get("intake_answers", [])
+        if a.get("value") and str(a["value"]).strip()
+    }
+
+    # Record user message
+    history.append({"role": "user", "content": payload.message})
+
+    # Determine current field being asked
+    current_field = payload.field_context or next_field(collected)
+
+    # Extract structured answer from user message
+    if current_field and current_field not in collected:
+        if provider.config.use_real_providers:
+            prompt = extract_field_prompt(payload.message, current_field, idea)
+            extraction = provider._gemini_json(prompt)
+        else:
+            extraction = fixture_extract(current_field)
+
+        extracted_value = extraction.get("value", payload.message)
+        confidence = extraction.get("confidence", 0.7)
+
+        # Save as intake answer
+        answers = scenario.state["inputs"].get("intake_answers", [])
+        # Remove existing answer for this field if any
+        answers = [a for a in answers if a.get("question_id") != current_field]
+        answers.append({
+            "question_id": current_field,
+            "answer_type": "text",
+            "value": extracted_value,
+            "meta": {"source_type": "inference", "confidence": confidence, "sources": []},
+        })
+        scenario.state["inputs"]["intake_answers"] = answers
+        collected.add(current_field)
+
+    readiness = compute_readiness(collected)
+
+    # Generate next question
+    raw_context = scenario.state["inputs"].get("raw_context")
+    nf = next_field(collected)
+    if nf:
+        if provider.config.use_real_providers:
+            prompt = next_question_prompt(idea, constraints, history, collected, raw_context=raw_context)
+            ai_response = provider._gemini_json(prompt)
+        else:
+            ai_response = fixture_chat_response(collected) or {
+                "message": "All questions answered!",
+                "field": None,
+                "suggestions": [],
+            }
+
+        ai_msg = ai_response.get("message", "")
+        field_being_asked = ai_response.get("field", nf)
+        suggestions = ai_response.get("suggestions", [])
+    else:
+        ai_msg = "All set! I have everything I need to build your GTM plan."
+        field_being_asked = None
+        suggestions = []
+
+    # Record AI response
+    history.append({
+        "role": "assistant",
+        "content": ai_msg,
+        "field": field_being_asked or "",
+        "suggestions": suggestions,
+    })
+
+    # Persist state
+    scenario.state["inputs"]["chat_history"] = history
+    scenario.state["meta"]["updated_at"] = store.now().isoformat()
+    _commit_state(scenario, scenario.state["meta"].get("run_id", "unset"))
+
+    return {
+        "message": ai_msg,
+        "field_being_asked": field_being_asked,
+        "suggestions": suggestions,
+        "readiness": readiness,
+        "ready": readiness >= 1.0,
+        "collected_fields": sorted(collected),
+    }
+
+
 @app.post("/scenarios/{scenario_id}/runs", response_model=RunResponse)
-async def start_run(scenario_id: str, payload: RunStartRequest | None = None) -> RunResponse:
+async def start_run(
+    scenario_id: str,
+    background_tasks: BackgroundTasks,
+    payload: RunStartRequest | None = None,
+) -> RunResponse:
     scenario = _get_scenario(scenario_id)
     request = payload or RunStartRequest()
 
@@ -272,7 +484,8 @@ async def start_run(scenario_id: str, payload: RunStartRequest | None = None) ->
     scenario.state["meta"]["updated_at"] = store.now().isoformat()
     _commit_state(scenario, run.id)
 
-    await _execute_run(
+    background_tasks.add_task(
+        _execute_run,
         scenario,
         run,
         changed_decision=request.changed_decision,
@@ -284,13 +497,13 @@ async def start_run(scenario_id: str, payload: RunStartRequest | None = None) ->
     return RunResponse(
         run_id=run.id,
         scenario_id=scenario_id,
-        status=store.runs[run.id].status,
+        status="running",
         stream_url=f"/runs/{run.id}/stream",
     )
 
 
 @app.post("/runs/{run_id}/resume", response_model=RunResponse)
-async def resume_run(run_id: str) -> RunResponse:
+async def resume_run(run_id: str, background_tasks: BackgroundTasks) -> RunResponse:
     prior_run = store.runs.get(run_id)
     if not prior_run:
         raise HTTPException(status_code=404, detail="run not found")
@@ -313,7 +526,8 @@ async def resume_run(run_id: str) -> RunResponse:
     scenario.state["meta"]["updated_at"] = store.now().isoformat()
     _commit_state(scenario, resumed_run.id)
 
-    await _execute_run(
+    background_tasks.add_task(
+        _execute_run,
         scenario,
         resumed_run,
         changed_decision=resumed_run.changed_decision,
@@ -324,7 +538,7 @@ async def resume_run(run_id: str) -> RunResponse:
     return RunResponse(
         run_id=resumed_run.id,
         scenario_id=scenario.id,
-        status=store.runs[resumed_run.id].status,
+        status="running",
         stream_url=f"/runs/{resumed_run.id}/stream",
     )
 

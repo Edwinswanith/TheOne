@@ -1,0 +1,26 @@
+{
+  "idea": {
+    "name": "PulsePilot",
+    "one_liner": "AI assistant that turns sales calls into automated follow-ups",
+    "problem": "Sales teams forget follow-ups after calls and lose deals",
+    "target_region": "US",
+    "category": "b2b_saas"
+  },
+  "constraints": {
+    "team_size": 3,
+    "timeline_weeks": 8,
+    "budget_usd_monthly": 2000,
+    "compliance_level": "none"
+  },
+  "pre_collected_fields": {
+    "buyer_role": {
+      "value": "VP of Sales",
+      "confidence": 0.8
+    },
+    "company_type": {
+      "value": "B2B SaaS, 50-200 employees",
+      "confidence": 0.75
+    }
+  },
+  "project_name": "PulsePilot GTM"
+}

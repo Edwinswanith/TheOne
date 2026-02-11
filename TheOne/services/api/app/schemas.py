@@ -100,3 +100,13 @@ class ExportRequest(BaseModel):
 class ScenarioCompareRequest(BaseModel):
     left_scenario_id: str
     right_scenario_id: str
+
+
+class ProjectFromContextRequest(BaseModel):
+    context: str = Field(min_length=10)
+    project_name: str | None = None
+
+
+class ChatMessageRequest(BaseModel):
+    message: str = Field(min_length=1)
+    field_context: str | None = None
