@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { RunEvent } from "@/lib/types";
+import type { RunEvent, ClusterStatus, ReasoningArtifact } from "@/lib/types";
 import type {
   CanonicalState,
   ChatResponse,
@@ -104,6 +104,13 @@ interface AppState {
   loadMcqQuestions: () => Promise<void>;
   setMcqAnswer: (questionId: string, optionId: string, customValue?: string) => void;
   submitMcq: () => Promise<void>;
+
+  /* cluster pipeline */
+  clusterStatuses: Record<string, ClusterStatus>;
+  orchestratorStatus: "idle" | "checking" | "dispatching" | "converged" | "blocked";
+  orchestratorConflicts: number;
+  artifacts: Record<string, Record<string, ReasoningArtifact>>;
+  pivotRequired: { pillar: string; changeScore: number; downstream: string[] } | null;
 
   /* unresolved contradictions */
   unresolvedContradictions: any[];
@@ -306,6 +313,98 @@ export const useAppStore = create<AppState>((set, get) => ({
             ),
           });
         }
+
+        // Cluster pipeline events
+        if (event.type === "cluster_started") {
+          const cluster = event.data.cluster as string;
+          set({
+            clusterStatuses: {
+              ...get().clusterStatuses,
+              [cluster]: {
+                status: "running",
+                round: 0,
+                currentStep: 0,
+                totalSteps: 0,
+                currentAgent: "",
+                confidence: null,
+                changeScore: null,
+              },
+            },
+          });
+        }
+        if (event.type === "cluster_completed") {
+          const cluster = event.data.cluster as string;
+          set({
+            clusterStatuses: {
+              ...get().clusterStatuses,
+              [cluster]: {
+                ...get().clusterStatuses[cluster],
+                status: "completed",
+              },
+            },
+          });
+        }
+        if (event.type === "sub_agent_started") {
+          const cluster = event.data.pillar as string;
+          const agent = event.data.agent as string;
+          const step = event.data.step as number;
+          const totalSteps = event.data.total_steps as number;
+          set({
+            clusterStatuses: {
+              ...get().clusterStatuses,
+              [cluster]: {
+                ...get().clusterStatuses[cluster],
+                status: "running",
+                currentStep: step,
+                totalSteps,
+                currentAgent: agent,
+              },
+            },
+          });
+        }
+        if (event.type === "sub_agent_completed") {
+          const cluster = event.data.pillar as string;
+          set({
+            clusterStatuses: {
+              ...get().clusterStatuses,
+              [cluster]: {
+                ...get().clusterStatuses[cluster],
+                currentStep: (get().clusterStatuses[cluster]?.currentStep ?? 0) + 1,
+              },
+            },
+          });
+        }
+        if (event.type === "orchestrator_started") {
+          set({ orchestratorStatus: "checking" });
+        }
+        if (event.type === "orchestrator_completed") {
+          const conflicts = event.data.conflicts as number;
+          set({
+            orchestratorStatus: conflicts > 0 ? "dispatching" : "converged",
+            orchestratorConflicts: conflicts,
+          });
+        }
+        if (event.type === "feedback_round_started") {
+          const clusters = Object.keys(get().clusterStatuses);
+          const updated: Record<string, ClusterStatus> = {};
+          for (const c of clusters) {
+            updated[c] = { ...get().clusterStatuses[c] };
+          }
+          set({ clusterStatuses: updated });
+        }
+        if (event.type === "feedback_round_completed") {
+          set({ orchestratorStatus: "converged" });
+        }
+        if (event.type === "pivot_decision_required") {
+          const pillar = event.data.pillar as string;
+          const changeScore = event.data.change_score as number;
+          const downstream = (event.data.downstream_affected ?? []) as string[];
+          set({
+            orchestratorStatus: "blocked",
+            pivotRequired: { pillar, changeScore, downstream },
+            runStatus: "blocked",
+          });
+        }
       });
 
       if (get().sseUnsub) get().sseUnsub!();
@@ -427,10 +526,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.submitClarification(sid, get().mcqAnswers);
       await get().refreshScenario();
       set({ screen: "workspace", mcqLoading: false, error: null });
+      // Auto-start the analysis run after confirming intake
+      get().startRun();
     } catch (e) {
       set({ mcqLoading: false, error: (e as Error).message });
     }
   },
+
+  clusterStatuses: {},
+  orchestratorStatus: "idle",
+  orchestratorConflicts: 0,
+  artifacts: {},
+  pivotRequired: null,
 
   unresolvedContradictions: [],
 

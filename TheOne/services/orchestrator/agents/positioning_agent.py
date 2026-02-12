@@ -61,7 +61,7 @@ Return JSON:
         facts = []
 
         options = raw.get("options", [])
-        recommended_id = raw.get("recommended_id", options[0].get("id") if options else "")
+        recommended_id = raw.get("recommended_id", options[0].get("id") if options else "") if options else ""
 
         if options:
             # Create decision options

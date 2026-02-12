@@ -1,13 +1,19 @@
 """Competitive teardown agent — deep analysis of competitors."""
 from __future__ import annotations
 
+import json
+import time
 from typing import Any
 
 from services.orchestrator.agents.base import BaseAgent
 
 
 class CompetitiveTeardownAgent(BaseAgent):
-    """Analyzes competitors in detail from collected evidence."""
+    """Analyzes competitors in detail from collected evidence.
+
+    Uses Perplexity to gather competitor reviews, then Gemini to synthesize
+    a detailed competitive teardown.
+    """
 
     name = "competitive_teardown_agent"
     pillar = "market_intelligence"
@@ -89,3 +95,30 @@ For each competitor, provide a detailed analysis. Return JSON:
             "required_inputs": [],
             "node_updates": []
         }
+
+    def run(
+        self, run_id: str, state: dict[str, Any], changed_decision: str | None = None
+    ) -> dict[str, Any]:
+        """Override run to gather competitor reviews via Perplexity before Gemini synthesis."""
+        timer = time.perf_counter()
+        self._input_tokens = 0
+        self._output_tokens = 0
+
+        # Gather competitor review data from Perplexity
+        evidence = state.get("evidence", {})
+        competitors = evidence.get("competitors", [])
+        competitor_names = [c.get("name", "") for c in competitors if c.get("name")]
+
+        reviews = {}
+        if competitor_names:
+            reviews = self.provider.search_competitor_reviews(competitor_names)
+
+        # Synthesize with Gemini, enriched with review data
+        prompt = self.build_prompt(state, changed_decision)
+        if reviews:
+            prompt += f"\n\nAdditional competitor review data:\n{json.dumps(reviews, indent=2)}"
+
+        raw = self._call_llm(prompt)
+        parsed = self.parse_response(raw, state, changed_decision)
+        elapsed = int((time.perf_counter() - timer) * 1000)
+        return self._wrap_output(run_id, parsed, execution_time_ms=elapsed)

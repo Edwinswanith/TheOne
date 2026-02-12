@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "query": "market size and trends for B2B SaaS",
+      "data": {
+        "market_size": "$195B globally in 2024",
+        "growth_rate": "11.7% CAGR",
+        "key_trends": ["AI-first products", "vertical SaaS growth", "usage-based pricing shift"],
+        "sources": ["gartner.com", "statista.com"]
+      }
+    },
+    {
+      "query": "competitive landscape analysis",
+      "data": {
+        "total_competitors": 12,
+        "market_leaders": ["Leader A", "Leader B"],
+        "emerging_players": ["Startup X", "Startup Y"],
+        "sources": ["g2.com", "crunchbase.com"]
+      }
+    }
+  ]
+}

@@ -33,8 +33,13 @@ import {
   HelpCircle,
   ArrowLeft,
   ChevronRight,
+  CheckCircle,
+  Activity,
+  Loader2,
+  Shield,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ClusterStatus } from "@/lib/types";
 
 const PILLAR_COLORS: Record<string, { bg: string; border: string; header: string }> = {
   market_intelligence: { bg: "#e8f0ea", border: "#6d8a73", header: "#6d8a73" },
@@ -125,10 +130,19 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], isPillarView: boolean
   return { nodes: layoutedNodes, edges };
 }
 
+function ClusterStatusIcon({ status }: { status: string }) {
+  if (status === "completed") return <CheckCircle size={12} strokeWidth={1.5} className="text-sage" />;
+  if (status === "running") return <Activity size={12} strokeWidth={1.5} className="text-sage animate-pulse" />;
+  if (status === "rerunning") return <Loader2 size={12} strokeWidth={1.5} className="text-amber-500 animate-spin" />;
+  if (status === "invalidated") return <AlertTriangle size={12} strokeWidth={1.5} className="text-red-400" />;
+  return <div className="h-2.5 w-2.5 rounded-full border-2 border-stone-300 bg-white" />;
+}
+
 /* Level 1 pillar card node */
-function PillarNode({ data }: { data: { pillar: string; title: string; childCount: number; avgConfidence: number } }) {
+function PillarNode({ data }: { data: { pillar: string; title: string; childCount: number; avgConfidence: number; clusterStatus?: ClusterStatus } }) {
   const colors = PILLAR_COLORS[data.pillar] || PILLAR_COLORS.execution;
   const confPct = Math.round(data.avgConfidence * 100);
+  const cs = data.clusterStatus;
 
   return (
     <div
@@ -151,27 +165,53 @@ function PillarNode({ data }: { data: { pillar: string; title: string; childCoun
           <LayoutGrid size={14} strokeWidth={1.5} />
         </span>
         <span className="text-sm font-semibold text-ink">{data.title}</span>
-        <span className="ml-auto text-xs text-graphite bg-white/70 sketch-rounded px-2 py-0.5">
-          {data.childCount} node{data.childCount !== 1 ? "s" : ""}
-        </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          {cs && <ClusterStatusIcon status={cs.status} />}
+          <span className="text-xs text-graphite bg-white/70 sketch-rounded px-2 py-0.5">
+            {data.childCount} node{data.childCount !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
 
       {/* Body */}
       <div className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${confPct}%`,
-                background: confPct >= 70 ? colors.header : confPct >= 40 ? "#d58c2f" : "#ef4444",
-              }}
-            />
+        {/* Cluster progress bar */}
+        {cs && cs.status === "running" && cs.totalSteps > 0 ? (
+          <div className="mb-2">
+            <div className="flex justify-between text-[9px] text-graphite mb-0.5">
+              <span>{cs.currentAgent?.replace(/_/g, " ")}</span>
+              <span>{cs.currentStep}/{cs.totalSteps}</span>
+            </div>
+            <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${(cs.currentStep / cs.totalSteps) * 100}%`,
+                  background: colors.header,
+                }}
+              />
+            </div>
           </div>
-          <span className="text-xs font-medium text-graphite">{confPct}%</span>
-        </div>
-        <p className="text-[10px] text-graphite mt-1.5 flex items-center gap-1">
-          Click to explore <ChevronRight size={10} />
+        ) : (
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${confPct}%`,
+                  background: confPct >= 70 ? colors.header : confPct >= 40 ? "#d58c2f" : "#ef4444",
+                }}
+              />
+            </div>
+            <span className="text-xs font-medium text-graphite">{confPct}%</span>
+          </div>
+        )}
+        <p className="text-[10px] text-graphite flex items-center gap-1">
+          {cs?.status === "completed" ? (
+            <><span className="text-sage">{cs.totalSteps} steps done</span> &middot; Click to explore <ChevronRight size={10} /></>
+          ) : (
+            <>Click to explore <ChevronRight size={10} /></>
+          )}
         </p>
       </div>
     </div>
@@ -285,6 +325,8 @@ function GraphCanvasInner() {
   const runStatus = useAppStore((s) => s.runStatus);
   const expandedPillar = useAppStore((s) => s.expandedPillar);
   const setExpandedPillar = useAppStore((s) => s.setExpandedPillar);
+  const clusterStatuses = useAppStore((s) => s.clusterStatuses);
+  const orchestratorStatus = useAppStore((s) => s.orchestratorStatus);
   const { fitView } = useReactFlow();
 
   /* Compute pillar stats */
@@ -323,6 +365,7 @@ function GraphCanvasInner() {
             title: PILLAR_LABELS[node.pillar] || node.title,
             childCount: stats.count,
             avgConfidence: stats.count > 0 ? stats.totalConf / stats.count : 0,
+            clusterStatus: clusterStatuses[node.pillar] ?? undefined,
           },
         };
       }
@@ -384,7 +427,7 @@ function GraphCanvasInner() {
     }
 
     return { rfNodes, rfEdges };
-  }, [storeNodes, scenarioState, selectedNodeId, runStatus, expandedPillar, isPillarView, pillarStats]);
+  }, [storeNodes, scenarioState, selectedNodeId, runStatus, expandedPillar, isPillarView, pillarStats, clusterStatuses]);
 
   /* Controlled mode: sync store -> local state, allow drag interactions */
   const [localNodes, setLocalNodes] = useState<Node[]>(rfNodes);
@@ -439,6 +482,24 @@ function GraphCanvasInner() {
 
   return (
     <div className="flex-1 bg-[#faf8f3] relative">
+      {/* Orchestrator status overlay */}
+      {orchestratorStatus !== "idle" && isPillarView && (
+        <div className="absolute top-3 right-3 z-10 sketch-rounded px-3 py-2 bg-white/90 backdrop-blur-sm border border-stone-200 shadow-sm flex items-center gap-2">
+          <Shield size={14} strokeWidth={1.5} className={
+            orchestratorStatus === "checking" ? "text-amber-500 animate-pulse" :
+            orchestratorStatus === "converged" ? "text-sage" :
+            orchestratorStatus === "blocked" ? "text-red-400" :
+            "text-graphite"
+          } />
+          <span className="text-[10px] font-medium text-ink">
+            {orchestratorStatus === "checking" && "Cross-referencing pillars..."}
+            {orchestratorStatus === "dispatching" && "Running feedback round..."}
+            {orchestratorStatus === "converged" && "All pillars aligned"}
+            {orchestratorStatus === "blocked" && "Pivot decision required"}
+          </span>
+        </div>
+      )}
+
       {/* Back to pillars button */}
       {expandedPillar && (
         <button

@@ -39,6 +39,7 @@ def test_default_state_contains_required_top_keys() -> None:
         "risks",
         "execution",
         "telemetry",
+        "artifacts",
     }
     assert state["meta"]["schema_version"]
     assert state["execution"]["chosen_track"] == "unset"

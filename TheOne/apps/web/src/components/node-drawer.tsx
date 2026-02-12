@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "@/lib/store";
+import type { ReasoningArtifact, ReasoningStep } from "@/lib/types";
 import {
   X,
   FileText,
@@ -14,6 +15,12 @@ import {
   Target,
   Lightbulb,
   List,
+  Brain,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
 interface Competitor {
@@ -73,6 +80,128 @@ function formatValue(key: string, val: unknown): string {
     return val.replace(/_/g, " ");
   }
   return JSON.stringify(val);
+}
+
+const STEP_ACTION_ICONS: Record<string, typeof Search> = {
+  query_generation: Search,
+  search_execution: Search,
+  analysis: Brain,
+  synthesis: Sparkles,
+};
+
+const SOURCE_TIER_COLORS: Record<string, string> = {
+  primary: "bg-sage/10 text-sage border-sage/20",
+  secondary: "bg-blue-50 text-blue-600 border-blue-200",
+  tertiary: "bg-stone-100 text-graphite border-stone-200",
+};
+
+function ReasoningChain({ artifact }: { artifact: ReasoningArtifact }) {
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+
+  const toggleStep = (step: number) => {
+    setExpandedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(step)) next.delete(step);
+      else next.add(step);
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {artifact.reasoning_chain.map((step: ReasoningStep) => {
+        const isExpanded = expandedSteps.has(step.step);
+        const Icon = STEP_ACTION_ICONS[step.action] || Brain;
+        const confPct = Math.round(step.confidence * 100);
+
+        return (
+          <div key={step.step} className="sketch-rounded border border-stone-200 bg-white">
+            <button
+              onClick={() => toggleStep(step.step)}
+              className="w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-stone-50 transition-colors"
+            >
+              <span className="flex h-5 w-5 items-center justify-center sketch-rounded bg-sage/10 shrink-0">
+                <Icon size={10} strokeWidth={1.5} className="text-sage" />
+              </span>
+              <span className="text-[10px] font-medium text-ink flex-1 truncate capitalize">
+                {step.action.replace(/_/g, " ")}
+              </span>
+              <span className="text-[9px] text-graphite">{confPct}%</span>
+              {isExpanded ? (
+                <ChevronDown size={10} className="text-graphite shrink-0" />
+              ) : (
+                <ChevronRight size={10} className="text-graphite shrink-0" />
+              )}
+            </button>
+            {isExpanded && (
+              <div className="px-2.5 pb-2.5 space-y-2 border-t border-stone-100">
+                <p className="text-[10px] text-ink leading-relaxed mt-2">{step.thought}</p>
+                {step.data && Object.keys(step.data).length > 0 && (
+                  <div className="sketch-rounded bg-stone-50 p-2 text-[9px] text-graphite font-mono overflow-x-auto">
+                    <pre className="whitespace-pre-wrap">{JSON.stringify(step.data, null, 2)}</pre>
+                  </div>
+                )}
+                {step.source_ids.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {step.source_ids.map((src) => {
+                      const tier = src.startsWith("src_") ? "primary" : src.startsWith("inf_") ? "secondary" : "tertiary";
+                      return (
+                        <span
+                          key={src}
+                          className={`sketch-rounded border px-1.5 py-0.5 text-[8px] font-medium ${SOURCE_TIER_COLORS[tier]}`}
+                        >
+                          {src}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReasoningSection({ pillar }: { pillar: string }) {
+  const artifacts = useAppStore((s) => s.artifacts);
+  const pillarArtifacts = artifacts[pillar];
+
+  if (!pillarArtifacts || Object.keys(pillarArtifacts).length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-graphite mb-1.5 flex items-center gap-1">
+        <Brain size={12} strokeWidth={1.5} />
+        Reasoning Chain
+      </p>
+      <div className="space-y-3">
+        {Object.entries(pillarArtifacts).map(([agentName, artifact]) => {
+          const art = artifact as ReasoningArtifact;
+          if (!art.reasoning_chain || art.reasoning_chain.length === 0) return null;
+          return (
+            <div key={agentName}>
+              <p className="text-[10px] font-medium text-ink mb-1 flex items-center gap-1.5">
+                <Sparkles size={10} strokeWidth={1.5} className="text-sage" />
+                {agentName.replace(/_/g, " ")}
+                {art.round > 0 && (
+                  <span className="sketch-rounded bg-amber/10 text-amber px-1.5 py-0.5 text-[8px]">
+                    Round {art.round + 1}
+                  </span>
+                )}
+              </p>
+              <ReasoningChain artifact={art} />
+              {art.output_summary && (
+                <p className="text-[9px] text-graphite mt-1 italic">{art.output_summary}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function NodeDrawer() {
@@ -448,6 +577,9 @@ export function NodeDrawer() {
             </div>
           </div>
         )}
+
+        {/* Reasoning Chain */}
+        <ReasoningSection pillar={node.pillar} />
 
         {/* Dependencies */}
         {node.dependencies.length > 0 && (

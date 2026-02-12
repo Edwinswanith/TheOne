@@ -7,7 +7,7 @@ from typing import Any
 from services.orchestrator.state.default_state import utc_now_iso
 from services.orchestrator.tools.evidence import dedupe_sources
 
-PATCH_ORDER = ["/evidence", "/decisions", "/pillars", "/graph", "/execution", "/telemetry"]
+PATCH_ORDER = ["/evidence", "/decisions", "/pillars", "/graph", "/execution", "/telemetry", "/artifacts"]
 
 
 @dataclass
@@ -320,3 +320,37 @@ def _is_critical_path(path: str) -> bool:
         "/decisions/sales_motion",
     ]
     return any(path.startswith(prefix) for prefix in critical_prefixes)
+
+
+def merge_cluster_outputs(
+    state: dict[str, Any],
+    cluster_output: Any,
+) -> tuple[dict[str, Any], list[MergeWarning]]:
+    """Merge outputs from a pillar cluster into canonical state.
+
+    Thin wrapper around merge_agent_outputs that also stores reasoning
+    artifacts under state["artifacts"][pillar].
+
+    Args:
+        state: Current canonical state.
+        cluster_output: ClusterOutput with .pillar, .outputs, .artifacts.
+
+    Returns:
+        (updated_state, warnings) tuple.
+    """
+    # Merge all sub-agent outputs through the standard merge engine
+    merged, warnings = merge_agent_outputs(state, cluster_output.outputs)
+
+    # Store artifacts under state["artifacts"][pillar]
+    if "artifacts" not in merged:
+        merged["artifacts"] = {}
+    pillar_artifacts = {}
+    for artifact in cluster_output.artifacts:
+        pillar_artifacts[artifact.agent] = artifact.to_dict()
+    merged["artifacts"][cluster_output.pillar] = pillar_artifacts
+
+    # Update pillar status
+    if cluster_output.pillar in merged.get("pillars", {}):
+        merged["pillars"][cluster_output.pillar]["status"] = "completed"
+
+    return merged, warnings

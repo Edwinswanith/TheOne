@@ -18,7 +18,7 @@ class TechFeasibilityAgent(BaseAgent):
         constraints = state.get("constraints", {})
         compliance_level = constraints.get("compliance_level", "none")
 
-        prompt = f"""You are a technical architect. Define technical stack and security approach.
+        prompt = f"""You are a technical feasibility analyst. Assess technical feasibility, build-vs-buy decisions, and compliance requirements.
 
 Product:
 Name: {idea.get('name', '')}
@@ -29,14 +29,31 @@ Constraints:
 Team size: {constraints.get('team_size', '')}
 Compliance level: {compliance_level}
 
+IMPORTANT: Do NOT recommend specific technology stacks. Focus on feasibility assessment, build-vs-buy analysis, and compliance requirements.
+
 Return JSON:
 {{
-  "summary": "string (architecture summary)",
-  "stack": {{
-    "frontend": ["string"],
-    "backend": ["string"],
-    "database": ["string"],
-    "infrastructure": ["string"]
+  "summary": "string (feasibility assessment summary)",
+  "feasibility_flags": {{
+    "is_feasible": true,
+    "complexity": "low | medium | high",
+    "estimated_build_months": 0,
+    "key_risks": ["string"],
+    "blockers": ["string"]
+  }},
+  "build_vs_buy": [
+    {{
+      "component": "string",
+      "recommendation": "build | buy | open_source",
+      "rationale": "string",
+      "cost_estimate": "string"
+    }}
+  ],
+  "compliance_assessment": {{
+    "required_certifications": ["string"],
+    "data_handling_requirements": ["string"],
+    "regulatory_considerations": ["string"],
+    "compliance_timeline_weeks": 0
   }},
   "security_plan": {{
     "compliance_requirements": ["string"],
@@ -64,7 +81,9 @@ Return JSON:
         risks = []
 
         summary = raw.get("summary", "")
-        stack = raw.get("stack", {})
+        feasibility_flags = raw.get("feasibility_flags", {})
+        build_vs_buy = raw.get("build_vs_buy", [])
+        compliance_assessment = raw.get("compliance_assessment", {})
         security_plan = raw.get("security_plan", {})
         scalability_approach = raw.get("scalability_approach", "")
         tech_risks = raw.get("tech_risks", [])
@@ -76,6 +95,44 @@ Return JSON:
                 "value": summary,
                 "meta": self.meta("inference", 0.7, [])
             })
+
+        if feasibility_flags:
+            patches.append({
+                "op": "add",
+                "path": "/pillars/product_tech/feasibility_flags",
+                "value": feasibility_flags,
+                "meta": self.meta("inference", 0.7, [])
+            })
+            if not feasibility_flags.get("is_feasible", True):
+                risks.append({
+                    "type": "technical",
+                    "severity": "critical",
+                    "description": "Product deemed not feasible with current constraints",
+                    "mitigation": "; ".join(feasibility_flags.get("blockers", []))
+                })
+
+        if build_vs_buy:
+            patches.append({
+                "op": "add",
+                "path": "/pillars/product_tech/build_vs_buy",
+                "value": build_vs_buy,
+                "meta": self.meta("inference", 0.7, [])
+            })
+
+        if compliance_assessment:
+            patches.append({
+                "op": "add",
+                "path": "/pillars/product_tech/compliance_assessment",
+                "value": compliance_assessment,
+                "meta": self.meta("inference", 0.75, [])
+            })
+            cert_count = len(compliance_assessment.get("required_certifications", []))
+            if cert_count > 0:
+                facts.append({
+                    "claim": f"Identified {cert_count} required certifications for compliance",
+                    "confidence": 0.75,
+                    "sources": []
+                })
 
         if security_plan:
             patches.append({
@@ -92,14 +149,6 @@ Return JSON:
                     "confidence": 0.75,
                     "sources": []
                 })
-
-        if stack:
-            patches.append({
-                "op": "add",
-                "path": "/pillars/product_tech/tech_stack",
-                "value": stack,
-                "meta": self.meta("inference", 0.7, [])
-            })
 
         if scalability_approach:
             patches.append({

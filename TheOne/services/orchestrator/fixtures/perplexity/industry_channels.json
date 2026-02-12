@@ -1,0 +1,7 @@
+{
+  "primary_channels": ["Content marketing", "Outbound sales", "Partner referrals"],
+  "industry_events": ["SaaStr Annual", "Web Summit", "Industry-specific conferences"],
+  "common_discovery_methods": ["Google search", "Peer recommendations", "Analyst reports", "LinkedIn"],
+  "trust_signals": ["SOC 2 certification", "Customer case studies", "G2 reviews", "Analyst recognition"],
+  "community_platforms": ["LinkedIn groups", "Slack communities", "Reddit", "Industry forums"]
+}

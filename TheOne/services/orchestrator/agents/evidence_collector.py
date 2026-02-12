@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from services.orchestrator.agents.base import BaseAgent
@@ -142,6 +143,10 @@ Return JSON with these keys:
         self, run_id: str, state: dict[str, Any], changed_decision: str | None = None
     ) -> dict[str, Any]:
         """Override run to use Perplexity then Gemini."""
+        timer = time.perf_counter()
+        self._input_tokens = 0
+        self._output_tokens = 0
+
         # First, get evidence from Perplexity
         perplexity_prompt = self.build_prompt(state, changed_decision)
         perplexity_response = self._call_perplexity(perplexity_prompt)
@@ -157,4 +162,5 @@ Return JSON with the same structure but with added analysis and synthesis."""
 
         # Parse the synthesized response
         parsed = self.parse_response(gemini_response, state, changed_decision)
-        return self._wrap_output(run_id, parsed)
+        elapsed = int((time.perf_counter() - timer) * 1000)
+        return self._wrap_output(run_id, parsed, execution_time_ms=elapsed)

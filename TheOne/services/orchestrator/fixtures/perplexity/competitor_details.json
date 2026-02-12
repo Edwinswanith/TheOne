@@ -1,0 +1,14 @@
+{
+  "name": "Competitor A",
+  "positioning": "All-in-one platform for mid-market teams",
+  "pricing_model": "per-seat subscription",
+  "pricing_details": "$49-199/seat/month across 3 tiers",
+  "target_segment": "Mid-market (50-500 employees)",
+  "go_to_market": "Content marketing + outbound sales",
+  "strengths": ["Brand recognition", "Feature depth", "Integration ecosystem"],
+  "weaknesses": ["Complex onboarding", "High price for small teams", "Slow innovation"],
+  "market_share": "15%",
+  "founding_year": 2015,
+  "funding": "$50M Series C",
+  "key_features": ["Dashboard analytics", "Workflow automation", "API access"]
+}

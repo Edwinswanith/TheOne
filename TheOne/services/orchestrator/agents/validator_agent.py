@@ -7,7 +7,19 @@ from services.orchestrator.agents.base import BaseAgent
 
 
 class ValidatorAgent(BaseAgent):
-    """Validates state consistency via rules.py — returns empty output."""
+    """Validates state consistency via rules.py — returns empty output.
+
+    This agent is a no-op placeholder in the agent pipeline. Actual validation
+    is performed by `services.orchestrator.validators.rules.py` which runs
+    14 deterministic rules (V-ICP-01 through V-CONT-01) against the canonical
+    state. The validator agent exists in the AGENT_SEQUENCE so the runtime can
+    trigger the reconciliation pass after all other agents have completed.
+
+    The run() method returns an empty AgentOutput (no patches, proposals, or
+    facts) because validation results are written directly to
+    `state.risks.contradictions[]` by the rules engine, not through the
+    standard merge pipeline.
+    """
 
     name = "validator_agent"
 

@@ -1,0 +1,31 @@
+{
+  "reviews": {
+    "Competitor A": {
+      "sentiment": "mixed",
+      "key_complaints": [
+        "Steep learning curve for non-technical users",
+        "Pricing increases without feature improvements",
+        "Limited integrations with common tools"
+      ],
+      "key_praises": [
+        "Comprehensive feature set",
+        "Good customer support",
+        "Reliable uptime"
+      ],
+      "review_sources": ["g2.com", "capterra.com"]
+    },
+    "Competitor B": {
+      "sentiment": "positive",
+      "key_complaints": [
+        "Missing advanced reporting",
+        "Mobile experience could be better"
+      ],
+      "key_praises": [
+        "Easy to set up",
+        "Great onboarding experience",
+        "Competitive pricing"
+      ],
+      "review_sources": ["g2.com", "trustradius.com"]
+    }
+  }
+}

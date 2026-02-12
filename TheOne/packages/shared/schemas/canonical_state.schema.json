@@ -106,6 +106,10 @@
         "clarification_responses": {
           "type": "array",
           "items": { "type": "object" }
+        },
+        "_clarification_questions": {
+          "type": "array",
+          "items": { "type": "object" }
         }
       }
     },
@@ -262,7 +266,16 @@
             "by_agent": { "type": "array", "items": { "type": "object" } }
           }
         },
-        "errors": { "type": "array", "items": { "type": "object" } }
+        "errors": { "type": "array", "items": { "type": "object" } },
+        "cluster_timings": { "type": "array", "items": { "type": "object" } },
+        "orchestrator_rounds": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
       }
     }
   },
@@ -294,6 +307,7 @@
         "question_id": { "type": "string" },
         "answer_type": { "type": "string", "enum": ["mcq", "text", "number", "boolean"] },
         "value": {},
+        "option_id": { "type": "string" },
         "justification": { "type": "string" },
         "meta": {
           "type": "object",

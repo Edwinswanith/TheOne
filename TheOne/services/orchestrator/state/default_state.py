@@ -81,12 +81,12 @@ def _base_state() -> dict[str, Any]:
             },
         },
         "pillars": {
-            "market_intelligence": {"summary": "", "nodes": []},
-            "customer": {"summary": "", "nodes": [], "objection_map": []},
-            "positioning_pricing": {"summary": "", "nodes": []},
-            "go_to_market": {"summary": "", "nodes": [], "messaging_templates": []},
-            "product_tech": {"summary": "", "nodes": [], "mvp_features": [], "roadmap_phases": []},
-            "execution": {"summary": "", "nodes": [], "team_plan": {}, "budget_allocation": {}, "playbook": [], "kill_criteria": [], "kpi_thresholds": []},
+            "market_intelligence": {"summary": "", "nodes": [], "status": "pending"},
+            "customer": {"summary": "", "nodes": [], "objection_map": [], "status": "pending"},
+            "positioning_pricing": {"summary": "", "nodes": [], "status": "pending"},
+            "go_to_market": {"summary": "", "nodes": [], "messaging_templates": [], "status": "pending"},
+            "product_tech": {"summary": "", "nodes": [], "mvp_features": [], "roadmap_phases": [], "security_plan": {}, "tech_stack": {}, "scalability_approach": "", "status": "pending"},
+            "execution": {"summary": "", "nodes": [], "team_plan": {}, "budget_allocation": {}, "playbook": [], "kill_criteria": [], "kpi_thresholds": [], "financial_plan": {}, "funding_needs": {}, "status": "pending"},
         },
         "graph": {
             "nodes": [],
@@ -116,7 +116,10 @@ def _base_state() -> dict[str, Any]:
             "agent_timings": [],
             "token_spend": {"total": 0, "by_agent": []},
             "errors": [],
+            "cluster_timings": [],
+            "orchestrator_rounds": [],
         },
+        "artifacts": {},
     }
 
 

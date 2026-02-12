@@ -65,7 +65,7 @@ Return JSON:
 
         metric = raw.get("metric", "")
         options = raw.get("options", [])
-        recommended_id = raw.get("recommended_id", options[0].get("id") if options else "")
+        recommended_id = raw.get("recommended_id", options[0].get("id") if options else "") if options else ""
 
         if metric:
             patches.append({

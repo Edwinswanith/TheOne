@@ -197,6 +197,31 @@ export const compareScenarios = (leftId: string, rightId: string) =>
     body: JSON.stringify({ left_scenario_id: leftId, right_scenario_id: rightId }),
   });
 
+/* ── Artifacts & Orchestrator ─────────────────────────────── */
+export const getArtifacts = (scenarioId: string, pillar: string) =>
+  apiFetch<{ scenario_id: string; pillar: string; artifacts: Record<string, unknown> }>(
+    `/scenarios/${scenarioId}/artifacts/${pillar}`
+  );
+
+export const getOrchestratorReport = (scenarioId: string) =>
+  apiFetch<{
+    scenario_id: string;
+    orchestrator_rounds: unknown[];
+    contradictions: unknown[];
+    unresolved_contradictions: unknown[];
+  }>(`/scenarios/${scenarioId}/orchestrator/report`);
+
+export const getSources = (scenarioId: string) =>
+  apiFetch<{ scenario_id: string; sources: unknown[]; competitors: unknown[] }>(
+    `/scenarios/${scenarioId}/sources`
+  );
+
+export const resolvePivot = (scenarioId: string, pillar: string, action: "accept" | "reject") =>
+  apiFetch(`/scenarios/${scenarioId}/resolve-pivot`, {
+    method: "POST",
+    body: JSON.stringify({ pillar, action }),
+  });
+
 /* ── Shared types ──────────────────────────────────────────── */
 export interface IntakeAnswer {
   question_id: string;
@@ -232,11 +257,12 @@ export interface CanonicalState {
   inputs: { intake_answers: IntakeAnswer[]; open_questions: { field: string; question: string; blocking: boolean }[] };
   evidence: { sources: unknown[]; competitors: unknown[]; pricing_anchors: unknown[] };
   decisions: Record<string, { selected_option_id: string; recommended_option_id?: string; options?: unknown[]; override?: Record<string, unknown> }>;
-  pillars: Record<string, { summary: string }>;
+  pillars: Record<string, { summary: string; status?: string }>;
   graph: { nodes: GraphNode[]; edges: unknown[]; groups: GraphGroup[] };
   risks: { contradictions: unknown[]; missing_proof: unknown[]; high_risk_flags: unknown[]; unresolved_contradictions?: unknown[] };
   execution: { chosen_track: string; next_actions: unknown[]; experiments: unknown[]; assets: unknown[] };
-  telemetry: { agent_timings: { agent: string; status: string; duration_ms?: number }[] };
+  telemetry: { agent_timings: { agent: string; status: string; duration_ms?: number }[]; cluster_timings?: unknown[]; orchestrator_rounds?: unknown[] };
+  artifacts?: Record<string, Record<string, unknown>>;
 }
 
 export interface ClarificationQuestion {

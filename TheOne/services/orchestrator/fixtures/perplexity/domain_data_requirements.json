@@ -1,0 +1,6 @@
+{
+  "required_data_sources": ["CRM data", "Email/calendar data", "Usage analytics", "Financial data"],
+  "common_apis": ["Salesforce API", "HubSpot API", "Google Workspace API", "Slack API"],
+  "integration_requirements": ["OAuth 2.0 authentication", "Webhook support", "REST API", "Bulk data import"],
+  "data_format_standards": ["JSON", "CSV", "XML for legacy systems"]
+}

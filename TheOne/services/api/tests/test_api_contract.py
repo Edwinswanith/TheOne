@@ -108,6 +108,7 @@ def test_create_project_initializes_canonical_state(client: TestClient) -> None:
         "risks",
         "execution",
         "telemetry",
+        "artifacts",
     }
     assert state["execution"]["chosen_track"] == "unset"
     assert state["decisions"]["icp"]["selected_option_id"] == ""

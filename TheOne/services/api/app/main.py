@@ -42,6 +42,7 @@ from services.orchestrator.chat.intake_chat import (
 )
 from services.orchestrator.tools.providers import ProviderClient
 from services.orchestrator.runtime import PipelineFailure, run_pipeline
+from services.orchestrator.tools.providers import _env_bool
 from services.orchestrator.state.default_state import create_default_state
 from services.orchestrator.state.validation import StateValidationError, validate_state
 from services.orchestrator.validators.rules import run_validator
@@ -314,16 +315,19 @@ async def patch_scenario(scenario_id: str, payload: ScenarioPatchRequest) -> dic
 async def get_clarification_questions(scenario_id: str) -> dict[str, Any]:
     scenario = _get_scenario(scenario_id)
 
-    # Return cached questions if already generated
-    cached = scenario.state["inputs"].get("clarification_responses")
-    if cached and isinstance(cached, list) and len(cached) > 0 and isinstance(cached[0], dict) and "question" in cached[0]:
-        return {"scenario_id": scenario_id, "questions": cached}
+    # Return cached questions if already generated and stored
+    cached_qs = scenario.state["inputs"].get("_clarification_questions", [])
+    if cached_qs:
+        return {"scenario_id": scenario_id, "questions": cached_qs}
 
     # Generate via provider
     provider = ProviderClient()
     result = provider.generate_clarification_questions(scenario.state)
 
     questions = result.get("questions", [])
+
+    # Store questions in state so submit can resolve option_id → label
+    scenario.state["inputs"]["_clarification_questions"] = questions
     scenario.state["meta"]["updated_at"] = store.now().isoformat()
     _commit_state(scenario, scenario.state["meta"].get("run_id", "unset"))
 
@@ -349,19 +353,43 @@ async def submit_clarification(scenario_id: str, payload: ClarificationSubmitReq
         "measurable_outcome": "measurable_outcome",
     }
 
+    # Build a lookup from cached clarification questions to resolve option_id → label
+    cached_questions = scenario.state["inputs"].get("clarification_responses", [])
+    # Also check for structured clarification questions stored at generation time
+    clarification_qs = scenario.state["inputs"].get("_clarification_questions", [])
+    option_label_map: dict[str, dict[str, str]] = {}
+    for q in clarification_qs:
+        q_id = q.get("id", "")
+        for opt in q.get("options", []):
+            option_label_map.setdefault(q_id, {})[opt.get("id", "")] = opt.get("label", "")
+
     intake_answers = []
     for qid, answer_data in payload.answers.items():
         if qid in required_field_map:
-            value = answer_data.get("custom_value") or answer_data.get("option_id", "")
+            custom_value = answer_data.get("custom_value")
+            option_id = answer_data.get("option_id", "")
+            # Resolve option_id to human-readable label when possible
+            if custom_value:
+                value = custom_value
+            elif option_id and qid in option_label_map and option_id in option_label_map[qid]:
+                value = option_label_map[qid][option_id]
+            else:
+                value = option_id
             intake_answers.append({
                 "question_id": qid,
                 "answer_type": "mcq",
                 "value": value,
+                "option_id": option_id,
                 "meta": {"source_type": "inference", "confidence": 0.8, "sources": []},
             })
 
     if intake_answers:
-        scenario.state["inputs"]["intake_answers"] = intake_answers
+        # Merge with existing pre-collected answers instead of overwriting
+        existing = scenario.state["inputs"].get("intake_answers", [])
+        existing_by_id = {a["question_id"]: a for a in existing}
+        for answer in intake_answers:
+            existing_by_id[answer["question_id"]] = answer
+        scenario.state["inputs"]["intake_answers"] = list(existing_by_id.values())
 
     scenario.state["meta"]["updated_at"] = store.now().isoformat()
     _commit_state(scenario, run_id=scenario.state["meta"].get("run_id", "unset"))
@@ -858,6 +886,68 @@ async def get_export(export_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/scenarios/{scenario_id}/artifacts/{pillar}")
+async def get_artifacts(scenario_id: str, pillar: str) -> dict[str, Any]:
+    """Get reasoning artifacts for a specific pillar cluster."""
+    scenario = _get_scenario(scenario_id)
+    artifacts = scenario.state.get("artifacts", {}).get(pillar, {})
+    return {"scenario_id": scenario_id, "pillar": pillar, "artifacts": artifacts}
+
+
+@app.get("/scenarios/{scenario_id}/orchestrator/report")
+async def get_orchestrator_report(scenario_id: str) -> dict[str, Any]:
+    """Get orchestrator cross-reference report."""
+    scenario = _get_scenario(scenario_id)
+    rounds = scenario.state.get("telemetry", {}).get("orchestrator_rounds", [])
+    contradictions = scenario.state.get("risks", {}).get("contradictions", [])
+    unresolved = scenario.state.get("risks", {}).get("unresolved_contradictions", [])
+    return {
+        "scenario_id": scenario_id,
+        "orchestrator_rounds": rounds,
+        "contradictions": contradictions,
+        "unresolved_contradictions": unresolved,
+    }
+
+
+@app.get("/scenarios/{scenario_id}/sources")
+async def get_sources(scenario_id: str) -> dict[str, Any]:
+    """Get all evidence sources for a scenario."""
+    scenario = _get_scenario(scenario_id)
+    sources = scenario.state.get("evidence", {}).get("sources", [])
+    competitors = scenario.state.get("evidence", {}).get("competitors", [])
+    return {
+        "scenario_id": scenario_id,
+        "sources": sources,
+        "competitors": competitors,
+    }
+
+
+@app.post("/scenarios/{scenario_id}/resolve-pivot")
+async def resolve_pivot(scenario_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Resolve a pivot decision gate after convergence check."""
+    scenario = _get_scenario(scenario_id)
+    pillar = payload.get("pillar", "")
+    action = payload.get("action", "accept")  # "accept" or "reject"
+
+    if pillar not in scenario.state.get("pillars", {}):
+        raise HTTPException(status_code=400, detail=f"unknown pillar: {pillar}")
+
+    if action == "accept":
+        scenario.state["pillars"][pillar]["status"] = "completed"
+    else:
+        scenario.state["pillars"][pillar]["status"] = "rejected"
+
+    scenario.state["meta"]["updated_at"] = store.now().isoformat()
+    _commit_state(scenario, run_id=scenario.state["meta"].get("run_id", "unset"))
+
+    return {
+        "scenario_id": scenario_id,
+        "pillar": pillar,
+        "action": action,
+        "status": scenario.state["pillars"][pillar]["status"],
+    }
+
+
 @app.post("/scenarios/compare")
 async def compare_scenarios(payload: ScenarioCompareRequest) -> dict[str, Any]:
     left = _get_scenario(payload.left_scenario_id)
@@ -900,25 +990,51 @@ async def _execute_run(
         store.runs[run.id].checkpoint_index = index + 1
         _commit_state(scenario, run.id, state=state)
 
+    use_clusters = _env_bool("GTMGRAPH_USE_CLUSTER_PIPELINE", default=False)
+
     try:
-        result = await run_pipeline(
-            state=deepcopy(scenario.state),
-            publish=publish,
-            checkpoint=checkpoint,
-            changed_decision=changed_decision,
-            start_index=start_index,
-            resumed=resumed,
-            simulate_failure_at_agent=simulate_failure_at_agent,
-        )
-        _commit_state(scenario, run.id, state=result.state)
-        status = "blocked" if result.blocking else "completed"
-        store.complete_run(
-            run.id,
-            status,
-            completed_agents=result.completed_agents,
-            skipped_agents=result.skipped_agents,
-            checkpoint_index=result.last_agent_index + 1,
-        )
+        if use_clusters:
+            from services.orchestrator.cluster_runtime import (
+                ClusterPipelineResult,
+                PipelineFailure as ClusterPipelineFailure,
+                run_cluster_pipeline,
+            )
+            cluster_result = await run_cluster_pipeline(
+                state=deepcopy(scenario.state),
+                publish=publish,
+                checkpoint=checkpoint,
+                changed_decision=changed_decision,
+                start_index=start_index,
+                resumed=resumed,
+            )
+            _commit_state(scenario, run.id, state=cluster_result.state)
+            status = "blocked" if cluster_result.blocking else "completed"
+            store.complete_run(
+                run.id,
+                status,
+                completed_agents=cluster_result.completed_clusters,
+                skipped_agents=[],
+                checkpoint_index=len(cluster_result.completed_clusters),
+            )
+        else:
+            result = await run_pipeline(
+                state=deepcopy(scenario.state),
+                publish=publish,
+                checkpoint=checkpoint,
+                changed_decision=changed_decision,
+                start_index=start_index,
+                resumed=resumed,
+                simulate_failure_at_agent=simulate_failure_at_agent,
+            )
+            _commit_state(scenario, run.id, state=result.state)
+            status = "blocked" if result.blocking else "completed"
+            store.complete_run(
+                run.id,
+                status,
+                completed_agents=result.completed_agents,
+                skipped_agents=result.skipped_agents,
+                checkpoint_index=result.last_agent_index + 1,
+            )
     except PipelineFailure as exc:
         _commit_state(scenario, run.id, state=exc.state)
         store.mark_run_failure(

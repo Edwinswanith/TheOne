@@ -1,0 +1,13 @@
+{
+  "evaluation_stages": [
+    {"stage": "Problem awareness", "duration_weeks": 2, "activities": ["Internal discussions", "Peer recommendations"]},
+    {"stage": "Solution research", "duration_weeks": 3, "activities": ["Google search", "Review sites", "Analyst reports"]},
+    {"stage": "Vendor evaluation", "duration_weeks": 4, "activities": ["Demo requests", "Free trials", "Reference calls"]},
+    {"stage": "Decision", "duration_weeks": 2, "activities": ["Procurement review", "Security assessment", "Contract negotiation"]}
+  ],
+  "key_criteria": ["Ease of integration", "Total cost of ownership", "Vendor reputation", "Data security"],
+  "typical_timeline": "8-12 weeks",
+  "stakeholders_involved": ["End user champion", "IT/Security", "Finance/Procurement", "Executive sponsor"],
+  "common_objections": ["Switching costs too high", "Current tool is good enough", "Budget not allocated"],
+  "preferred_channels": ["Peer recommendations", "Review sites (G2, Capterra)", "Industry events"]
+}
