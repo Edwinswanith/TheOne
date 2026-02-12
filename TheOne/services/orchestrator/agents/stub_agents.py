@@ -46,6 +46,14 @@ def _empty_output(agent: str, run_id: str) -> dict[str, Any]:
         "risks": [],
         "required_inputs": [],
         "node_updates": [],
+        "sources": [],
+        "citations": [],
+        "execution_time_ms": 0,
+        "token_usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "model": "stub",
+        },
     }
 
 
@@ -164,7 +172,7 @@ def _positioning_output(run_id: str, state: dict[str, Any], _: str | None) -> di
             },
             {
                 "op": "replace",
-                "path": "/pillars/market_to_money/summary",
+                "path": "/pillars/positioning_pricing/summary",
                 "value": "Position around faster follow-up and measurable pipeline recovery.",
                 "meta": _meta("inference", 0.73),
             },
@@ -237,7 +245,7 @@ def _channel_output(run_id: str, state: dict[str, Any], _: str | None) -> dict[s
     template = provider_client.decision_template("channels")
 
     return {
-        "agent": "channel_strategy_agent",
+        "agent": "channel_agent",
         "run_id": run_id,
         "produced_at": _now(),
         "patches": [
@@ -317,13 +325,13 @@ def _product_output(run_id: str, state: dict[str, Any], _: str | None) -> dict[s
         "patches": [
             {
                 "op": "replace",
-                "path": "/pillars/product/summary",
+                "path": "/pillars/product_tech/summary",
                 "value": "Prioritize call summarization, follow-up extraction, and CRM sync.",
                 "meta": _meta("inference", 0.75),
             },
             {
                 "op": "replace",
-                "path": "/pillars/product/nodes",
+                "path": "/pillars/product_tech/nodes",
                 "value": ["product.core_offer", "product.onboarding", "product.integration", "product.security_plan"],
                 "meta": _meta("inference", 0.7),
             },
@@ -345,13 +353,13 @@ def _tech_output(run_id: str, state: dict[str, Any], _: str | None) -> dict[str,
         else "Baseline logging and role-based access"
     )
     return {
-        "agent": "tech_architecture_agent",
+        "agent": "tech_feasibility_agent",
         "run_id": run_id,
         "produced_at": _now(),
         "patches": [
             {
                 "op": "replace",
-                "path": "/pillars/execution/security_plan",
+                "path": "/pillars/product_tech/security_plan",
                 "value": security_plan,
                 "meta": _meta("inference", 0.64),
             }
@@ -373,13 +381,13 @@ def _people_output(run_id: str, state: dict[str, Any], _: str | None) -> dict[st
         "patches": [
             {
                 "op": "replace",
-                "path": "/pillars/people_and_cash/summary",
-                "value": "Keep burn below $10k and hire one SDR only after PMF signal.",
+                "path": "/pillars/execution/team_plan",
+                "value": {"summary": "Keep burn below $10k and hire one SDR only after PMF signal."},
                 "meta": _meta("inference", 0.66),
             },
             {
                 "op": "replace",
-                "path": "/pillars/people_and_cash/nodes",
+                "path": "/pillars/execution/nodes",
                 "value": ["people.team_plan", "people.runway", "people.hiring", "people.ops"],
                 "meta": _meta("inference", 0.66),
             },
@@ -469,42 +477,294 @@ def _validator_output(run_id: str, _: dict[str, Any], __: str | None) -> dict[st
 
 
 def _graph_nodes(state: dict[str, Any], changed_decision: str | None) -> list[dict[str, Any]]:
-    pricing_metric = state["decisions"]["pricing"].get("metric", "")
-    primary_channel = state["decisions"]["channels"].get("primary", "")
-    secondary_channel = state["decisions"]["channels"].get("secondary", "")
+    # Extract rich data from canonical state
+    icp_profile = state["decisions"]["icp"].get("profile", {})
+    pos_frame = state["decisions"]["positioning"].get("frame", {})
+    pricing = state["decisions"]["pricing"]
+    channels = state["decisions"]["channels"]
+    evidence = state.get("evidence", {})
+    pillars = state.get("pillars", {})
+    execution = state.get("execution", {})
+    constraints = state.get("constraints", {})
+    competitors = evidence.get("competitors", [])
+    pricing_anchors = evidence.get("pricing_anchors", [])
+    channel_signals = evidence.get("channel_signals", [])
+
+    buyer_role = icp_profile.get("buyer_role", "")
+    company_size = icp_profile.get("company_size", "")
+    trigger_event = icp_profile.get("trigger_event", "")
+    value_prop = pos_frame.get("value_prop", "")
+    category = pos_frame.get("category", "")
+    wedge = pos_frame.get("wedge", "")
+    pricing_metric = pricing.get("metric", "")
+    tiers = pricing.get("tiers", [])
+    price_to_test = pricing.get("price_to_test", "")
+    primary_channel = channels.get("primary", "")
+    secondary_channel = channels.get("secondary", "")
     sales_motion = state["decisions"]["sales_motion"].get("motion", "")
-    value_prop = state["decisions"]["positioning"].get("frame", {}).get("value_prop", "")
+
+    next_actions = execution.get("next_actions", [])
+    experiments = execution.get("experiments", [])
+    team_plan = pillars.get("execution", {}).get("team_plan", {})
+    product_summary = pillars.get("product_tech", {}).get("summary", "")
+    mvp_features = pillars.get("product_tech", {}).get("mvp_features", [])
+    roadmap_phases = pillars.get("product_tech", {}).get("roadmap_phases", [])
+    pos_summary = pillars.get("positioning_pricing", {}).get("summary", "")
+    gtm_summary = pillars.get("go_to_market", {}).get("summary", "")
+    security_plan = pillars.get("product_tech", {}).get("security_plan", "")
+    compliance_level = constraints.get("compliance_level", "none")
+
+    # Build tier summary text
+    tier_names = [f"{t.get('name', '')} (${t.get('price', '')})" for t in tiers] if tiers else []
+    tier_summary = f"Tiered pricing: {', '.join(tier_names)}" if tier_names else "No tiers defined"
+
+    # ICP rationale from proposal if available
+    icp_opts = state["decisions"]["icp"].get("options", [])
+    icp_rationale = ""
+    icp_rec_id = state["decisions"]["icp"].get("recommended_option_id", "")
+    for opt in icp_opts:
+        if opt.get("id") == icp_rec_id:
+            icp_rationale = opt.get("description", "")
+            break
 
     template = [
-        ("market.icp.summary", "ICP Summary", "market_to_money", "decision", {"buyer_role": state["decisions"]["icp"].get("profile", {}).get("buyer_role", "")}, ["icp"]),
-        ("market.trigger.event", "Trigger Event", "market_to_money", "evidence", {"trigger": state["decisions"]["icp"].get("profile", {}).get("trigger_event", "")}, ["icp"]),
-        ("positioning.wedge", "Positioning Wedge", "market_to_money", "decision", {"value_prop": value_prop}, ["positioning", "icp"]),
-        ("pricing.metric", "Pricing Metric", "market_to_money", "decision", {"metric": pricing_metric}, ["pricing", "icp"]),
-        ("pricing.tiers", "Pricing Tiers", "market_to_money", "plan", {"tiers": state["decisions"]["pricing"].get("tiers", [])}, ["pricing"]),
-        ("channel.primary", "Primary Channel", "market_to_money", "decision", {"primary": primary_channel}, ["channels"]),
-        ("channel.secondary", "Secondary Channel", "market_to_money", "decision", {"secondary": secondary_channel}, ["channels"]),
-        ("sales.motion", "Sales Motion", "market_to_money", "decision", {"motion": sales_motion}, ["sales_motion", "channels", "icp"]),
-        ("product.core_offer", "Core Offer", "product", "plan", {"summary": "Call-to-follow-up automation"}, ["positioning"]),
-        ("product.onboarding", "Onboarding Flow", "product", "plan", {"step": "Import calls and connect CRM"}, ["product"]),
-        ("product.integration", "Integration Plan", "product", "plan", {"targets": ["HubSpot", "Salesforce"]}, ["product"]),
-        ("product.security_plan", "Security Plan", "product", "risk", {"plan": state["pillars"]["execution"].get("security_plan", "")}, ["tech"]),
-        ("execution.validation_sprint", "Validation Sprint", "execution", "checklist", {"duration_weeks": 2}, ["execution"]),
-        ("execution.outbound_playbook", "Outbound Playbook", "execution", "asset", {"messages": 50}, ["execution", "channels"]),
-        ("execution.landing_page", "Landing Page Sprint", "execution", "asset", {"goal": "waitlist"}, ["execution"]),
-        ("execution.pipeline", "Pipeline Review", "execution", "checklist", {"kpi": "lead leakage reduction"}, ["execution", "pricing", "sales_motion"]),
-        ("people.team_plan", "Team Plan", "people_and_cash", "plan", {"team_size": state["constraints"].get("team_size", 1)}, ["people_and_cash"]),
-        ("people.runway", "Runway Plan", "people_and_cash", "risk", {"budget": state["constraints"].get("budget_usd_monthly", 0)}, ["pricing", "people_and_cash"]),
-        ("people.hiring", "Hiring Trigger", "people_and_cash", "checklist", {"trigger": "After first 10 customers"}, ["execution"]),
-        ("people.ops", "Ops Checklist", "people_and_cash", "checklist", {"items": ["Weekly metrics", "Risk review"]}, ["execution"]),
+        # Level 1 pillar summary nodes
+        ("pillar.market_intelligence", "Market Intelligence", "market_intelligence", "pillar", {}, []),
+        ("pillar.customer", "Customer", "customer", "pillar", {}, []),
+        ("pillar.positioning_pricing", "Positioning & Pricing", "positioning_pricing", "pillar", {}, []),
+        ("pillar.go_to_market", "Go-to-Market", "go_to_market", "pillar", {}, []),
+        ("pillar.product_tech", "Product & Tech", "product_tech", "pillar", {}, []),
+        ("pillar.execution", "Execution", "execution", "pillar", {}, []),
+        # Level 2 detail nodes — enriched content
+        (
+            "market.icp.summary", "ICP Summary", "customer", "decision",
+            {
+                "summary": f"Target buyer: {buyer_role} at {company_size} companies, triggered by {trigger_event}." if buyer_role else "ICP not yet defined.",
+                "buyer_role": buyer_role,
+                "company_size": company_size,
+                "budget_owner": icp_profile.get("budget_owner", ""),
+                "trigger_event": trigger_event,
+                "rationale": icp_rationale or "Best evidence-backed fit from current source set.",
+            },
+            ["icp"],
+        ),
+        (
+            "market.trigger.event", "Trigger Event", "customer", "evidence",
+            {
+                "summary": f"Key trigger: {trigger_event}. Signals buyer readiness and urgency to act." if trigger_event else "No trigger event identified.",
+                "trigger": trigger_event,
+                "why_it_matters": "Trigger events create urgency and budget allocation for new solutions.",
+                "competitors_count": len(competitors),
+            },
+            ["icp"],
+        ),
+        (
+            "positioning.wedge", "Positioning Wedge", "positioning_pricing", "decision",
+            {
+                "summary": f"Position as '{category}' leading with '{wedge}' — {value_prop}." if wedge else "Positioning not yet defined.",
+                "category": category,
+                "wedge": wedge,
+                "value_prop": value_prop,
+                "pillar_summary": pos_summary,
+                "rationale": "Aligns with buyer pain from intake and evidence.",
+            },
+            ["positioning", "icp"],
+        ),
+        (
+            "pricing.metric", "Pricing Metric", "positioning_pricing", "decision",
+            {
+                "summary": f"Recommended pricing model: {pricing_metric.replace('_', ' ')} at ${price_to_test}/mo test point." if pricing_metric else "Pricing metric not set.",
+                "metric": pricing_metric,
+                "price_to_test": price_to_test,
+                "rationale": "Closest match to evidence anchors and competitor pricing.",
+                "anchors": pricing_anchors[:3] if pricing_anchors else [],
+            },
+            ["pricing", "icp"],
+        ),
+        (
+            "pricing.tiers", "Pricing Tiers", "positioning_pricing", "plan",
+            {
+                "summary": tier_summary,
+                "tiers": tiers,
+            },
+            ["pricing"],
+        ),
+        (
+            "channel.primary", "Primary Channel", "go_to_market", "decision",
+            {
+                "summary": f"Primary acquisition channel: {primary_channel.replace('_', ' ')}." if primary_channel else "Primary channel not selected.",
+                "channel": primary_channel,
+                "channel_signals": channel_signals[:3] if channel_signals else [],
+                "rationale": "Strongest signal from channel evidence set.",
+            },
+            ["channels"],
+        ),
+        (
+            "channel.secondary", "Secondary Channel", "go_to_market", "decision",
+            {
+                "summary": f"Secondary channel: {secondary_channel.replace('_', ' ')} to diversify acquisition." if secondary_channel else "No secondary channel.",
+                "channel": secondary_channel,
+                "rationale": "Complements primary channel for broader reach.",
+            },
+            ["channels"],
+        ),
+        (
+            "sales.motion", "Sales Motion", "go_to_market", "decision",
+            {
+                "summary": f"Sales approach: {sales_motion.replace('_', ' ')}." if sales_motion != "unset" else "Sales motion not decided.",
+                "motion": sales_motion,
+                "pillar_summary": gtm_summary,
+                "rationale": "Best fit for current ICP/channel combination.",
+            },
+            ["sales_motion", "channels", "icp"],
+        ),
+        (
+            "product.core_offer", "Core Offer", "product_tech", "plan",
+            {
+                "summary": product_summary or "Core product offer pending strategy agent.",
+                "mvp_features": mvp_features or ["Call summarization", "Follow-up extraction", "CRM sync"],
+                "roadmap_phases": roadmap_phases or ["MVP: core automation", "V2: integrations", "V3: analytics"],
+            },
+            ["positioning"],
+        ),
+        (
+            "product.onboarding", "Onboarding Flow", "product_tech", "plan",
+            {
+                "summary": "Guided onboarding: import calls, connect CRM, configure automations.",
+                "steps": ["Import existing calls or connect live source", "Connect CRM (HubSpot/Salesforce)", "Configure follow-up automation rules", "Send first automated follow-up"],
+                "integration_targets": ["HubSpot", "Salesforce"],
+            },
+            ["product"],
+        ),
+        (
+            "product.integration", "Integration Plan", "product_tech", "plan",
+            {
+                "summary": "Priority integrations: HubSpot and Salesforce for CRM sync.",
+                "targets": ["HubSpot", "Salesforce"],
+                "priority": "HubSpot first (larger SMB install base), then Salesforce.",
+            },
+            ["product"],
+        ),
+        (
+            "product.security_plan", "Security Plan", "product_tech", "risk",
+            {
+                "summary": f"Security posture: {compliance_level} compliance. {security_plan}" if security_plan else f"Compliance level: {compliance_level}. Security plan pending.",
+                "plan": security_plan,
+                "compliance_level": compliance_level,
+            },
+            ["tech"],
+        ),
+        (
+            "execution.validation_sprint", "Validation Sprint", "execution", "checklist",
+            {
+                "summary": "2-week validation sprint: interview buyers, test messaging, validate willingness to pay.",
+                "description": next_actions[0].get("title", "Interview 10 target buyers") if next_actions else "Interview 10 target buyers",
+                "owner": next_actions[0].get("owner", "founder") if next_actions else "founder",
+                "timeline": "Week 1-2",
+                "success_metric": "10+ buyer interviews completed with pain confirmation",
+            },
+            ["execution"],
+        ),
+        (
+            "execution.outbound_playbook", "Outbound Playbook", "execution", "asset",
+            {
+                "summary": "Send first 50 outbound messages to validate channel and messaging.",
+                "description": next_actions[1].get("title", "Send first 50 outbound messages") if len(next_actions) > 1 else "Send first 50 outbound messages",
+                "owner": next_actions[1].get("owner", "founder") if len(next_actions) > 1 else "founder",
+                "timeline": "Week 1",
+                "success_metric": "5%+ reply rate on cold outbound",
+            },
+            ["execution", "channels"],
+        ),
+        (
+            "execution.landing_page", "Landing Page Sprint", "execution", "asset",
+            {
+                "summary": "Launch landing page with waitlist CTA to capture early demand signal.",
+                "description": next_actions[2].get("title", "Launch landing page with CTA") if len(next_actions) > 2 else "Launch landing page with CTA",
+                "owner": next_actions[2].get("owner", "marketing") if len(next_actions) > 2 else "marketing",
+                "timeline": "Week 2",
+                "success_metric": "100+ waitlist signups in first 2 weeks",
+            },
+            ["execution"],
+        ),
+        (
+            "execution.pipeline", "Pipeline Review", "execution", "checklist",
+            {
+                "summary": "Track pipeline conversion from outbound to demo to trial to close.",
+                "description": experiments[0].get("hypothesis", "") if experiments else "Validate buyer willingness to pay.",
+                "owner": "founder",
+                "timeline": "Ongoing",
+                "success_metric": experiments[0].get("metric", "Demo-to-trial conversion") if experiments else "Demo-to-trial conversion",
+            },
+            ["execution", "pricing", "sales_motion"],
+        ),
+        (
+            "people.team_plan", "Team Plan", "execution", "plan",
+            {
+                "summary": team_plan.get("summary", "Lean team: founder-led execution, hire after PMF signal."),
+                "team_size": constraints.get("team_size", 1),
+                "budget": constraints.get("budget_usd_monthly", 0),
+                "hiring_trigger": "After first 10 paying customers or $10k MRR",
+            },
+            ["execution"],
+        ),
+        (
+            "people.runway", "Runway Plan", "execution", "risk",
+            {
+                "summary": f"Monthly budget: ${constraints.get('budget_usd_monthly', 0):,.0f}. Keep burn minimal until PMF.",
+                "budget": constraints.get("budget_usd_monthly", 0),
+                "rationale": "Conserve runway until product-market fit is confirmed by conversion metrics.",
+            },
+            ["pricing", "execution"],
+        ),
+        (
+            "people.hiring", "Hiring Trigger", "execution", "checklist",
+            {
+                "summary": "Hire first SDR after 10 customers or when founder capacity is saturated.",
+                "trigger": "After first 10 customers",
+                "rationale": "Premature hiring burns runway without validated demand.",
+            },
+            ["execution"],
+        ),
+        (
+            "people.ops", "Ops Checklist", "execution", "checklist",
+            {
+                "summary": "Weekly ops cadence: metrics review, risk assessment, pipeline check.",
+                "items": ["Weekly metrics review", "Risk register update", "Pipeline health check", "Customer feedback synthesis"],
+            },
+            ["execution"],
+        ),
     ]
 
     impacted = impacted_decisions(changed_decision) if changed_decision else set()
     if changed_decision:
         impacted.add(changed_decision)
 
+    # Node-specific assumptions for low-confidence areas
+    node_assumptions: dict[str, list[str]] = {
+        "pricing.metric": [f"Assumes {buyer_role or 'buyer'} has budget authority for ${price_to_test}/seat"] if price_to_test else [],
+        "pricing.tiers": ["Tier pricing assumes clear feature differentiation between plans"],
+        "channel.primary": [f"Assumes {primary_channel.replace('_', ' ')} reaches {buyer_role or 'target buyer'} effectively"] if primary_channel else [],
+        "sales.motion": ["Sales motion choice depends on ICP validation from buyer interviews"],
+        "people.runway": [f"Budget of ${constraints.get('budget_usd_monthly', 0):,.0f}/mo assumes no paid acquisition spend"],
+    }
+
+    # Node-specific evidence refs
+    node_evidence: dict[str, list[str]] = {
+        "market.icp.summary": ["src_comp_1"] if competitors else [],
+        "market.trigger.event": ["src_comp_1"] if competitors else [],
+        "positioning.wedge": ["src_comp_1", "src_comp_2"] if len(competitors) >= 2 else (["src_comp_1"] if competitors else []),
+        "pricing.metric": [a.get("source_id", "src_pricing_1") for a in pricing_anchors[:2]] if pricing_anchors else [],
+        "pricing.tiers": [a.get("source_id", "src_pricing_1") for a in pricing_anchors[:1]] if pricing_anchors else [],
+        "channel.primary": ["src_comp_1"] if competitors else [],
+    }
+
     nodes = []
     for node_id, title, pillar, node_type, content, dependencies in template:
-        if changed_decision and not any(dep in impacted for dep in dependencies):
+        # Pillar summary nodes always included
+        if node_type == "pillar":
+            pass
+        elif changed_decision and not any(dep in impacted for dep in dependencies):
             continue
         nodes.append(
             {
@@ -513,9 +773,9 @@ def _graph_nodes(state: dict[str, Any], changed_decision: str | None) -> list[di
                 "pillar": pillar,
                 "type": node_type,
                 "content": content,
-                "assumptions": [],
+                "assumptions": node_assumptions.get(node_id, []),
                 "confidence": 0.74 if "pricing" in node_id or "sales" in node_id else 0.7,
-                "evidence_refs": ["src_comp_1"] if pillar == "market_to_money" else [],
+                "evidence_refs": node_evidence.get(node_id, ["src_comp_1"] if pillar == "market_intelligence" else []),
                 "dependencies": dependencies,
                 "status": "draft",
                 "actions": ["edit", "rerun"],
@@ -527,31 +787,124 @@ def _graph_nodes(state: dict[str, Any], changed_decision: str | None) -> list[di
 
 def _graph_groups(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[str, list[str]] = {
-        "market_to_money": [],
-        "product": [],
+        "market_intelligence": [],
+        "customer": [],
+        "positioning_pricing": [],
+        "go_to_market": [],
+        "product_tech": [],
         "execution": [],
-        "people_and_cash": [],
     }
     for node in nodes:
-        grouped[node["pillar"]].append(node["id"])
+        pillar = node["pillar"]
+        if pillar in grouped:
+            grouped[pillar].append(node["id"])
 
     return [
-        {"id": "group.market_to_money", "title": "Market to Money", "node_ids": grouped["market_to_money"]},
-        {"id": "group.product", "title": "Product", "node_ids": grouped["product"]},
+        {"id": "group.market_intelligence", "title": "Market Intelligence", "node_ids": grouped["market_intelligence"]},
+        {"id": "group.customer", "title": "Customer", "node_ids": grouped["customer"]},
+        {"id": "group.positioning_pricing", "title": "Positioning & Pricing", "node_ids": grouped["positioning_pricing"]},
+        {"id": "group.go_to_market", "title": "Go-to-Market", "node_ids": grouped["go_to_market"]},
+        {"id": "group.product_tech", "title": "Product & Tech", "node_ids": grouped["product_tech"]},
         {"id": "group.execution", "title": "Execution", "node_ids": grouped["execution"]},
-        {"id": "group.people_and_cash", "title": "People and Cash", "node_ids": grouped["people_and_cash"]},
     ]
+
+
+def _competitive_teardown_output(run_id: str, state: dict[str, Any], _: str | None) -> dict[str, Any]:
+    return {
+        "agent": "competitive_teardown_agent",
+        "run_id": run_id,
+        "produced_at": _now(),
+        "patches": [
+            {
+                "op": "replace",
+                "path": "/evidence/competitors",
+                "value": [
+                    {
+                        "name": "Competitor A",
+                        "url": "https://example.com/competitor-a",
+                        "positioning": "All-in-one platform",
+                        "pricing_model": "per_seat",
+                        "target_segment": "Mid-market",
+                        "strengths": ["Brand recognition", "Feature breadth"],
+                        "weaknesses": ["Complex onboarding", "High price"],
+                        "category": "direct",
+                        "channels": ["direct_sales", "content_marketing"],
+                        "market_position": "leader",
+                        "threat_level": "high",
+                        "pricing_detail": {"base_price": 50, "model": "per_seat", "source_id": "src_comp_1"},
+                        "weakness_evidence": [
+                            {"claim": "Complex onboarding", "source": "G2 review", "relevance": "Speed-to-value wedge"},
+                            {"claim": "High price excludes SMBs", "source": "Reddit thread", "relevance": "Price undercut opportunity"},
+                        ],
+                        "channel_footprint": {"channels_observed": ["linkedin_ads", "seo_blog", "webinars"], "estimated_primary": "direct_sales"},
+                    },
+                    {
+                        "name": "Competitor B",
+                        "url": "https://example.com/competitor-b",
+                        "positioning": "Simple and fast",
+                        "pricing_model": "flat_rate",
+                        "target_segment": "SMB",
+                        "strengths": ["Easy setup", "Low cost"],
+                        "weaknesses": ["Limited integrations", "No enterprise features"],
+                        "category": "direct",
+                        "channels": ["product_led", "seo"],
+                        "market_position": "niche",
+                        "threat_level": "medium",
+                        "pricing_detail": {"base_price": 29, "model": "flat_rate", "source_id": "src_comp_2"},
+                        "weakness_evidence": [
+                            {"claim": "Limited integrations", "source": "Capterra review", "relevance": "Integration gap for mid-market"},
+                        ],
+                        "channel_footprint": {"channels_observed": ["seo_blog", "product_hunt"], "estimated_primary": "product_led"},
+                    },
+                ],
+                "meta": _meta("evidence", 0.78, ["https://example.com/competitor-a", "https://example.com/competitor-b"]),
+            },
+            {
+                "op": "replace",
+                "path": "/evidence/positioning_map",
+                "value": [
+                    {
+                        "axes": {"x": "price_point", "y": "feature_depth"},
+                        "placements": [
+                            {"name": "Competitor A", "x": 0.7, "y": 0.85},
+                            {"name": "Competitor B", "x": 0.3, "y": 0.4},
+                        ],
+                        "identified_gap": {
+                            "x_range": [0.2, 0.5],
+                            "y_range": [0.3, 0.6],
+                            "description": "Low-price, focused-feature zone is underserved",
+                            "confidence": 0.72,
+                        },
+                    }
+                ],
+                "meta": _meta("inference", 0.72, ["https://example.com/competitor-a"]),
+            },
+        ],
+        "proposals": [],
+        "facts": [
+            {
+                "claim": "Two direct competitors identified with distinct positioning strategies",
+                "confidence": 0.78,
+                "sources": ["https://example.com/competitor-a", "https://example.com/competitor-b"],
+            }
+        ],
+        "assumptions": [],
+        "risks": [],
+        "required_inputs": [],
+        "node_updates": [],
+    }
 
 
 AGENT_BUILDERS = {
     "evidence_collector": _evidence_output,
+    "competitive_teardown_agent": _competitive_teardown_output,
     "icp_agent": _icp_output,
     "positioning_agent": _positioning_output,
     "pricing_agent": _pricing_output,
-    "channel_strategy_agent": _channel_output,
+    "channel_agent": _channel_output,
     "sales_motion_agent": _sales_output,
     "product_strategy_agent": _product_output,
-    "tech_architecture_agent": _tech_output,
+    "tech_feasibility_agent": _tech_output,
     "people_cash_agent": _people_output,
     "execution_agent": _execution_output,
     "graph_builder": _graph_output,

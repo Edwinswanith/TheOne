@@ -1,0 +1,38 @@
+{
+  "competitors": [
+    {
+      "name": "Competitor A",
+      "url": "https://example.com/competitor-a",
+      "positioning": "All-in-one revenue operations platform",
+      "pricing_model": "per_seat",
+      "price_range": "$49–$199/seat/mo",
+      "target_segment": "Mid-market B2B SaaS",
+      "strengths": ["Strong brand recognition", "Wide feature set", "Large partner ecosystem"],
+      "weaknesses": ["Complex onboarding (avg 6 weeks)", "High price point", "Poor mobile experience"],
+      "g2_rating": 4.2,
+      "messaging_focus": "Complete solution for growing teams"
+    },
+    {
+      "name": "Competitor B",
+      "url": "https://example.com/competitor-b",
+      "positioning": "Simple and fast sales automation",
+      "pricing_model": "flat_rate",
+      "price_range": "$29–$79/mo flat",
+      "target_segment": "SMB and startups",
+      "strengths": ["5-minute setup", "Low cost", "Great UX"],
+      "weaknesses": ["Limited integrations", "No enterprise features", "Basic reporting"],
+      "g2_rating": 4.5,
+      "messaging_focus": "Get started in minutes, not months"
+    }
+  ],
+  "differentiation_opportunities": [
+    "Speed of implementation vs Competitor A",
+    "Enterprise features at SMB price point",
+    "AI-powered automation neither competitor offers"
+  ],
+  "pricing_insights": {
+    "market_range": "$29–$199/seat/mo",
+    "sweet_spot": "$49–$99/seat/mo for target segment",
+    "anchor_recommendation": "Price below Competitor A but above Competitor B to signal quality"
+  }
+}

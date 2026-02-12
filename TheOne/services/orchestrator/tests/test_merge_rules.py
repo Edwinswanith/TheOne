@@ -104,7 +104,7 @@ def test_conflicting_evidence_updates_create_validator_item() -> None:
             "agent": "agent_a",
             "patches": [
                 patch(
-                    "/pillars/market_to_money/summary",
+                    "/pillars/positioning_pricing/summary",
                     "Evidence-backed summary A",
                     source_type="evidence",
                     confidence=0.7,
@@ -117,7 +117,7 @@ def test_conflicting_evidence_updates_create_validator_item() -> None:
             "agent": "agent_b",
             "patches": [
                 patch(
-                    "/pillars/market_to_money/summary",
+                    "/pillars/positioning_pricing/summary",
                     "Evidence-backed summary B",
                     source_type="evidence",
                     confidence=0.8,

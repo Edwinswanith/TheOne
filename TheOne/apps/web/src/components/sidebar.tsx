@@ -2,21 +2,25 @@
 
 import { useAppStore } from "@/lib/store";
 import { useMemo } from "react";
-import { ArrowLeft, TrendingUp, Box, Rocket, Users, CheckCircle, Circle } from "lucide-react";
+import { ArrowLeft, TrendingUp, Box, Rocket, Users, CheckCircle, Circle, Tag, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const PILLAR_META: Record<string, { icon: LucideIcon; color: string }> = {
-  market_to_money: { icon: TrendingUp, color: "bg-sage" },
-  product: { icon: Box, color: "bg-blue-500" },
-  execution: { icon: Rocket, color: "bg-amber" },
-  people_and_cash: { icon: Users, color: "bg-purple-500" },
+  market_intelligence: { icon: TrendingUp, color: "bg-sage" },
+  customer: { icon: Users, color: "bg-cyan-600" },
+  positioning_pricing: { icon: Tag, color: "bg-violet-500" },
+  go_to_market: { icon: Rocket, color: "bg-amber" },
+  product_tech: { icon: Box, color: "bg-blue-500" },
+  execution: { icon: Zap, color: "bg-orange-500" },
 };
 
 const PILLAR_LABELS: Record<string, string> = {
-  market_to_money: "Market to Money",
-  product: "Product",
+  market_intelligence: "Market Intelligence",
+  customer: "Customer",
+  positioning_pricing: "Positioning & Pricing",
+  go_to_market: "Go-to-Market",
+  product_tech: "Product & Tech",
   execution: "Execution",
-  people_and_cash: "People & Cash",
 };
 
 export function Sidebar() {
@@ -25,6 +29,8 @@ export function Sidebar() {
   const selectNode = useAppStore((s) => s.selectNode);
   const selectedNodeId = useAppStore((s) => s.selectedNodeId);
   const setScreen = useAppStore((s) => s.setScreen);
+  const setExpandedPillar = useAppStore((s) => s.setExpandedPillar);
+  const expandedPillar = useAppStore((s) => s.expandedPillar);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof nodes> = {};
@@ -32,6 +38,7 @@ export function Sidebar() {
       map[pillar] = [];
     }
     for (const node of nodes) {
+      if (node.type === "pillar") continue; // Skip Level 1 pillar summary nodes
       const p = node.pillar || "execution";
       if (!map[p]) map[p] = [];
       map[p].push(node);
@@ -70,7 +77,12 @@ export function Sidebar() {
 
           return (
             <div key={key} className="mb-3">
-              <div className="flex items-center gap-2 px-2 py-1">
+              <button
+                onClick={() => setExpandedPillar(expandedPillar === key ? null : key)}
+                className={`flex w-full items-center gap-2 px-2 py-1 rounded-md transition-colors ${
+                  expandedPillar === key ? "bg-stone-100" : "hover:bg-stone-50"
+                }`}
+              >
                 <span
                   className={`flex h-6 w-6 items-center justify-center sketch-rounded text-white ${meta.color}`}
                 >
@@ -84,7 +96,7 @@ export function Sidebar() {
                     {pillarNodes.length}
                   </span>
                 )}
-              </div>
+              </button>
 
               {pillarNodes.map((node) => (
                 <button

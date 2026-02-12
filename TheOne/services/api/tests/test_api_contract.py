@@ -277,7 +277,7 @@ def test_partial_rerun_only_recomputes_dependents_and_skips_unrelated_agents(cli
 
     run_record = store.runs[run_id]
     assert "evidence_collector" in run_record.skipped_agents
-    assert "product_strategy_agent" in run_record.skipped_agents
+    assert "icp_agent" in run_record.skipped_agents
 
 
 def test_run_resume_from_checkpoint_after_failure(client: TestClient) -> None:

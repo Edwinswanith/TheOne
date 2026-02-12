@@ -115,6 +115,25 @@ class ProviderClient:
         )
         return self._gemini_json(prompt)
 
+    def generate_clarification_questions(self, state: dict[str, Any]) -> dict[str, Any]:
+        if not self.config.use_real_providers:
+            return self._fixture_json("gemini/clarification_questions.json")
+
+        idea = state.get("idea", {})
+        constraints = state.get("constraints", {})
+        prompt = (
+            "You are a GTM strategy expert. Based on the product idea below, "
+            "generate 8-12 multiple-choice clarification questions. "
+            "5 required fields (buyer_role, company_type, trigger_event, current_workaround, measurable_outcome) "
+            "plus 3-7 contextual questions. Each question has 3-4 options with one marked recommended. "
+            "Return JSON with key 'questions' containing array of question objects. "
+            f"Idea: name={idea.get('name','')}, one_liner={idea.get('one_liner','')}, "
+            f"problem={idea.get('problem','')}, category={idea.get('category','')}. "
+            f"Constraints: team_size={constraints.get('team_size','')}, "
+            f"timeline_weeks={constraints.get('timeline_weeks','')}."
+        )
+        return self._gemini_json(prompt)
+
     def decision_template(self, decision_key: str) -> dict[str, Any]:
         templates = self._fixture_json("gemini/decision_templates.json")
         return templates.get(decision_key, {})

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -216,50 +218,54 @@ class MemoryStore:
             return scenario
 
     def save_snapshot(self, scenario_id: str, run_id: str, state: dict[str, Any]) -> Snapshot:
-        with self._lock:
-            created_at = self.now()
+        created_at = self.now()
+        snapshot_id = f"ss_{uuid4().hex}"
+        state_copy = deepcopy(state)
+        state_hash = hashlib.sha256(json.dumps(state, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
-            with self.SessionLocal.begin() as session:
-                version = (
-                    session.execute(
-                        select(func.max(StateSnapshotModel.version)).where(StateSnapshotModel.scenario_id == scenario_id)
-                    ).scalar_one_or_none()
-                    or 0
-                ) + 1
-
-                snapshot_model = StateSnapshotModel(
-                    id=f"ss_{uuid4().hex}",
-                    scenario_id=scenario_id,
-                    run_id=run_id,
-                    version=version,
-                    state_jsonb=deepcopy(state),
-                    hash=str(hash(str(state))),
-                    created_at=created_at,
-                )
-                session.add(snapshot_model)
-
-                scenario_model = session.execute(
-                    select(ScenarioModel).where(ScenarioModel.id == scenario_id)
+        # DB write outside lock to avoid blocking the event loop
+        with self.SessionLocal.begin() as session:
+            version = (
+                session.execute(
+                    select(func.max(StateSnapshotModel.version)).where(StateSnapshotModel.scenario_id == scenario_id)
                 ).scalar_one_or_none()
-                if scenario_model:
-                    scenario_model.updated_at = created_at
+                or 0
+            ) + 1
 
-            snapshot = Snapshot(
-                id=snapshot_model.id,
+            session.add(StateSnapshotModel(
+                id=snapshot_id,
                 scenario_id=scenario_id,
                 run_id=run_id,
                 version=version,
-                state_jsonb=deepcopy(state),
-                hash=snapshot_model.hash,
+                state_jsonb=state_copy,
+                hash=state_hash,
                 created_at=created_at,
-            )
-            self.snapshots.append(snapshot)
+            ))
 
+            scenario_model = session.execute(
+                select(ScenarioModel).where(ScenarioModel.id == scenario_id)
+            ).scalar_one_or_none()
+            if scenario_model:
+                scenario_model.updated_at = created_at
+
+        snapshot = Snapshot(
+            id=snapshot_id,
+            scenario_id=scenario_id,
+            run_id=run_id,
+            version=version,
+            state_jsonb=deepcopy(state),
+            hash=state_hash,
+            created_at=created_at,
+        )
+
+        # In-memory mutations inside lock
+        with self._lock:
+            self.snapshots.append(snapshot)
             if scenario_id in self.scenarios:
                 self.scenarios[scenario_id].state = deepcopy(state)
                 self.scenarios[scenario_id].updated_at = created_at
 
-            return snapshot
+        return snapshot
 
     def latest_snapshot_for_scenario(self, scenario_id: str) -> Snapshot | None:
         snapshots = [snapshot for snapshot in self.snapshots if snapshot.scenario_id == scenario_id]

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 AGENT_SEQUENCE = [
     "evidence_collector",
+    "competitive_teardown_agent",
     "icp_agent",
     "positioning_agent",
     "pricing_agent",
-    "channel_strategy_agent",
+    "channel_agent",
     "sales_motion_agent",
     "product_strategy_agent",
-    "tech_architecture_agent",
+    "tech_feasibility_agent",
     "people_cash_agent",
     "execution_agent",
     "graph_builder",
@@ -17,22 +18,25 @@ AGENT_SEQUENCE = [
 
 DECISION_DEPENDENCY_GRAPH: dict[str, set[str]] = {
     "icp": {"positioning", "pricing", "channels", "sales_motion"},
-    "positioning": {"execution"},
-    "pricing": {"execution", "people_and_cash"},
-    "channels": {"execution", "sales_motion"},
+    "positioning": {"pricing", "sales_motion", "execution"},
+    "pricing": {"execution"},
+    "channels": {"sales_motion", "execution"},
     "sales_motion": {"execution"},
 }
 
 DECISION_TO_AGENTS: dict[str, set[str]] = {
     "icp": {
+        "competitive_teardown_agent",
         "positioning_agent",
         "pricing_agent",
-        "channel_strategy_agent",
+        "channel_agent",
         "sales_motion_agent",
+        "product_strategy_agent",
+        "tech_feasibility_agent",
         "people_cash_agent",
         "execution_agent",
     },
-    "positioning": {"execution_agent"},
+    "positioning": {"sales_motion_agent", "execution_agent"},
     "pricing": {"people_cash_agent", "execution_agent"},
     "channels": {"sales_motion_agent", "execution_agent"},
     "sales_motion": {"execution_agent"},

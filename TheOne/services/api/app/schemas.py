@@ -110,3 +110,23 @@ class ProjectFromContextRequest(BaseModel):
 class ChatMessageRequest(BaseModel):
     message: str = Field(min_length=1)
     field_context: str | None = None
+
+
+class ClarificationOption(BaseModel):
+    id: str
+    label: str
+    detail: str
+    recommended: bool = False
+
+
+class ClarificationQuestion(BaseModel):
+    id: str
+    question: str
+    why: str = ""
+    category: str = ""
+    required: bool = True
+    options: list[ClarificationOption]
+
+
+class ClarificationSubmitRequest(BaseModel):
+    answers: dict[str, Any]  # {question_id: {option_id: str, custom_value?: str}}

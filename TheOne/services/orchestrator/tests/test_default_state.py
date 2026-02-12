@@ -48,6 +48,33 @@ def test_default_state_contains_required_top_keys() -> None:
     assert isinstance(state["graph"]["groups"], list)
 
 
+def test_default_state_has_six_pillars() -> None:
+    state = build_state()
+    expected_pillars = {
+        "market_intelligence",
+        "customer",
+        "positioning_pricing",
+        "go_to_market",
+        "product_tech",
+        "execution",
+    }
+    assert set(state["pillars"].keys()) == expected_pillars
+
+
+def test_default_state_has_six_graph_groups() -> None:
+    state = build_state()
+    group_ids = {g["id"] for g in state["graph"]["groups"]}
+    expected_groups = {
+        "group.market_intelligence",
+        "group.customer",
+        "group.positioning_pricing",
+        "group.go_to_market",
+        "group.product_tech",
+        "group.execution",
+    }
+    assert group_ids == expected_groups
+
+
 def test_schema_rejects_unknown_root_keys() -> None:
     state = build_state()
     state["randomKey"] = {"drift": True}

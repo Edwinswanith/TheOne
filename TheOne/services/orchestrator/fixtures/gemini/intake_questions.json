@@ -1,0 +1,122 @@
+{
+  "buyer_role": {
+    "question": "Who is the primary buyer or decision-maker for this product?",
+    "options": [
+      {
+        "id": "buyer_role_1",
+        "label": "VP / Director of Sales",
+        "detail": "Senior sales leaders responsible for revenue targets and team performance",
+        "recommended": true
+      },
+      {
+        "id": "buyer_role_2",
+        "label": "Head of Product / CPO",
+        "detail": "Product leadership evaluating tools for product-led growth",
+        "recommended": false
+      },
+      {
+        "id": "buyer_role_3",
+        "label": "Founder / CEO",
+        "detail": "Early-stage founders making all purchasing decisions directly",
+        "recommended": false
+      }
+    ],
+    "reasoning": "Based on the product description and B2B SaaS category, sales leadership is the most likely buyer persona."
+  },
+  "company_type": {
+    "question": "What type of company is the ideal customer?",
+    "options": [
+      {
+        "id": "company_type_1",
+        "label": "Mid-market SaaS (50-500 employees)",
+        "detail": "B2B SaaS companies with $5M-$50M ARR and established sales teams",
+        "recommended": true
+      },
+      {
+        "id": "company_type_2",
+        "label": "Enterprise (500+ employees)",
+        "detail": "Large organizations with complex sales processes and multiple teams",
+        "recommended": false
+      },
+      {
+        "id": "company_type_3",
+        "label": "Early-stage startup (1-50 employees)",
+        "detail": "Pre-Series B companies building their initial go-to-market motion",
+        "recommended": false
+      }
+    ],
+    "reasoning": "Mid-market SaaS companies have enough scale to need structured GTM but are still agile enough to adopt new tools."
+  },
+  "trigger_event": {
+    "question": "What event typically triggers the need for this product?",
+    "options": [
+      {
+        "id": "trigger_event_1",
+        "label": "Missed revenue targets",
+        "detail": "The company missed quota for two or more consecutive quarters",
+        "recommended": true
+      },
+      {
+        "id": "trigger_event_2",
+        "label": "New market expansion",
+        "detail": "The company is entering a new geographic or vertical market segment",
+        "recommended": false
+      },
+      {
+        "id": "trigger_event_3",
+        "label": "Leadership change",
+        "detail": "New CRO or VP of Sales wants to revamp the go-to-market strategy",
+        "recommended": false
+      }
+    ],
+    "reasoning": "Revenue misses create urgent demand for GTM planning tools and are the most common catalyst for purchase."
+  },
+  "current_workaround": {
+    "question": "How do potential customers solve this problem today?",
+    "options": [
+      {
+        "id": "current_workaround_1",
+        "label": "Spreadsheets and slide decks",
+        "detail": "Manual planning with Excel models and PowerPoint presentations shared across teams",
+        "recommended": true
+      },
+      {
+        "id": "current_workaround_2",
+        "label": "Management consulting firms",
+        "detail": "Hiring McKinsey, BCG, or niche GTM consultants for strategy engagements",
+        "recommended": false
+      },
+      {
+        "id": "current_workaround_3",
+        "label": "Generic project management tools",
+        "detail": "Repurposing Notion, Asana, or Monday.com for strategy planning",
+        "recommended": false
+      }
+    ],
+    "reasoning": "Most teams default to spreadsheets for GTM planning, which is error-prone and lacks evidence-backed structure."
+  },
+  "measurable_outcome": {
+    "question": "What measurable outcome does the customer expect?",
+    "options": [
+      {
+        "id": "measurable_outcome_1",
+        "label": "20% faster time-to-market",
+        "detail": "Reduce GTM planning cycle from months to weeks with structured, evidence-backed plans",
+        "recommended": true
+      },
+      {
+        "id": "measurable_outcome_2",
+        "label": "Higher pipeline conversion rate",
+        "detail": "Improve win rates by 15% through better-targeted ICP and positioning",
+        "recommended": false
+      },
+      {
+        "id": "measurable_outcome_3",
+        "label": "Reduced GTM planning cost",
+        "detail": "Cut strategy consulting spend by 50% or more while maintaining plan quality",
+        "recommended": false
+      }
+    ],
+    "reasoning": "Speed improvement is the most tangible and universally valued outcome for GTM planning tools."
+  }
+}

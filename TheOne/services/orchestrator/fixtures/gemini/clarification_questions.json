@@ -1,0 +1,144 @@
+{
+  "questions": [
+    {
+      "id": "buyer_role",
+      "question": "Who is the primary buyer of this product?",
+      "why": "Knowing the buyer role helps shape pricing, messaging, and sales motion.",
+      "category": "customer",
+      "required": true,
+      "allow_custom": true,
+      "custom_placeholder": "Describe your target buyer role...",
+      "options": [
+        {"id": "buyer_vp_sales", "label": "VP/Head of Sales", "detail": "Decision maker with budget authority in revenue teams", "recommended": true, "reasoning": "Revenue team leaders are the most common buyers for sales productivity tools based on market evidence."},
+        {"id": "buyer_ops_lead", "label": "Revenue/Sales Operations Lead", "detail": "Operational buyer focused on process optimization", "recommended": false},
+        {"id": "buyer_founder", "label": "Founder/CEO (SMB)", "detail": "Founder-led purchase at early-stage companies", "recommended": false}
+      ]
+    },
+    {
+      "id": "company_type",
+      "question": "What type of company is your ideal customer?",
+      "why": "Company type determines channel strategy and product requirements.",
+      "category": "customer",
+      "required": true,
+      "allow_custom": true,
+      "custom_placeholder": "Describe your ideal customer company...",
+      "options": [
+        {"id": "company_b2b_saas", "label": "B2B SaaS (50-500)", "detail": "Mid-market SaaS companies with structured sales teams", "recommended": true, "reasoning": "Mid-market B2B SaaS companies have the budget and team structure to benefit most from this category."},
+        {"id": "company_smb", "label": "SMB (1-50)", "detail": "Small businesses with lean teams", "recommended": false},
+        {"id": "company_enterprise", "label": "Enterprise (500+)", "detail": "Large organizations with complex procurement", "recommended": false}
+      ]
+    },
+    {
+      "id": "trigger_event",
+      "question": "What event triggers the need for your product?",
+      "why": "Trigger events help time outreach and craft messaging that resonates.",
+      "category": "market",
+      "required": true,
+      "allow_custom": true,
+      "custom_placeholder": "Describe the trigger event...",
+      "options": [
+        {"id": "trigger_hiring", "label": "Hiring new sales reps", "detail": "Team growth creates need for better follow-up processes", "recommended": true, "reasoning": "Hiring events are the strongest observable trigger for this product category based on competitive evidence."},
+        {"id": "trigger_churn", "label": "Rising customer churn", "detail": "Churn signals broken post-sale communication", "recommended": false},
+        {"id": "trigger_growth", "label": "Revenue target increase", "detail": "Ambitious targets require better pipeline efficiency", "recommended": false}
+      ]
+    },
+    {
+      "id": "current_workaround",
+      "question": "How do prospects currently solve this problem?",
+      "why": "Understanding workarounds reveals positioning opportunities and switching costs.",
+      "category": "market",
+      "required": true,
+      "allow_custom": true,
+      "custom_placeholder": "Describe the current workaround...",
+      "options": [
+        {"id": "workaround_manual", "label": "Manual notes + CRM updates", "detail": "Reps manually log call notes and set follow-up reminders", "recommended": true, "reasoning": "Manual processes are the most common workaround, representing the largest addressable wedge for automation."},
+        {"id": "workaround_tool", "label": "Basic call recording tool", "detail": "Using Gong/Chorus but not for follow-up automation", "recommended": false},
+        {"id": "workaround_nothing", "label": "No formal process", "detail": "Follow-ups are ad hoc and often forgotten", "recommended": false}
+      ]
+    },
+    {
+      "id": "measurable_outcome",
+      "question": "What measurable outcome would prove value to the buyer?",
+      "why": "Clear metrics help validate product-market fit and drive purchasing decisions.",
+      "category": "value",
+      "required": true,
+      "allow_custom": true,
+      "custom_placeholder": "Describe the measurable outcome...",
+      "options": [
+        {"id": "outcome_leakage", "label": "Reduce lead leakage by 30%+", "detail": "Fewer leads falling through the cracks after initial calls", "recommended": true, "reasoning": "Lead leakage reduction is the most concrete, measurable outcome that maps directly to revenue impact."},
+        {"id": "outcome_time", "label": "Save 5+ hours/week per rep", "detail": "Time saved on manual follow-up and CRM data entry", "recommended": false},
+        {"id": "outcome_conversion", "label": "Increase demo-to-close by 20%", "detail": "Better follow-up cadence improves conversion rates", "recommended": false}
+      ]
+    },
+    {
+      "id": "company_size",
+      "question": "What team size does your ideal customer have?",
+      "why": "Team size affects pricing strategy, onboarding complexity, and support needs.",
+      "category": "customer",
+      "required": false,
+      "allow_custom": true,
+      "custom_placeholder": "Enter a custom team size range...",
+      "options": [
+        {"id": "size_5_20", "label": "5-20 people", "detail": "Small team, fast decisions, price-sensitive", "recommended": false},
+        {"id": "size_20_100", "label": "20-100 people", "detail": "Growing team with dedicated sales function", "recommended": true, "reasoning": "This size typically has a dedicated sales function but not yet entrenched tooling — ideal adoption window."},
+        {"id": "size_100_plus", "label": "100+ people", "detail": "Established org with multiple sales teams", "recommended": false}
+      ]
+    },
+    {
+      "id": "sales_cycle_length",
+      "question": "How long is a typical sales cycle for your product?",
+      "why": "Sales cycle length determines the right sales motion and cash flow planning.",
+      "category": "execution",
+      "required": false,
+      "allow_custom": true,
+      "custom_placeholder": "Describe your expected sales cycle...",
+      "options": [
+        {"id": "cycle_self_serve", "label": "Self-serve (days)", "detail": "Product-led, free trial or freemium", "recommended": false},
+        {"id": "cycle_short", "label": "1-4 weeks", "detail": "Quick demo-to-close with champion buy-in", "recommended": true, "reasoning": "Short cycles match the mid-market ICP and keep cash flow manageable for early-stage teams."},
+        {"id": "cycle_long", "label": "1-3 months", "detail": "Multiple stakeholders, procurement involved", "recommended": false}
+      ]
+    },
+    {
+      "id": "integration_requirements",
+      "question": "What integrations are critical for your product?",
+      "why": "Integration requirements affect technical scope and time-to-market.",
+      "category": "product",
+      "required": false,
+      "allow_custom": true,
+      "custom_placeholder": "List required integrations...",
+      "options": [
+        {"id": "integ_crm", "label": "CRM (HubSpot/Salesforce)", "detail": "Core integration for data sync", "recommended": true, "reasoning": "CRM integration is table stakes for sales tools — without it, adoption stalls at the pilot stage."},
+        {"id": "integ_comms", "label": "Communication tools (Zoom/Teams)", "detail": "Call recording and meeting integration", "recommended": false},
+        {"id": "integ_minimal", "label": "Standalone first", "detail": "Launch without integrations, add later", "recommended": false}
+      ]
+    },
+    {
+      "id": "competitive_awareness",
+      "question": "How aware are your prospects of competing solutions?",
+      "why": "Competitive awareness shapes your positioning strategy — category creation vs. category wedge.",
+      "category": "market",
+      "required": false,
+      "allow_custom": true,
+      "custom_placeholder": "Describe the competitive landscape...",
+      "options": [
+        {"id": "aware_high", "label": "Highly aware", "detail": "Prospects actively compare solutions in this category", "recommended": false},
+        {"id": "aware_moderate", "label": "Somewhat aware", "detail": "Know the problem exists but haven't explored solutions deeply", "recommended": true, "reasoning": "Moderate awareness means the problem is felt but not solved — best wedge positioning opportunity."},
+        {"id": "aware_low", "label": "Not aware", "detail": "Don't know a solution category exists — greenfield", "recommended": false}
+      ]
+    },
+    {
+      "id": "willingness_to_pay_signal",
+      "question": "What's the strongest signal that prospects would pay for this?",
+      "why": "WTP evidence is critical for pricing confidence and investor conversations.",
+      "category": "value",
+      "required": false,
+      "allow_custom": true,
+      "custom_placeholder": "Describe your willingness-to-pay evidence...",
+      "options": [
+        {"id": "wtp_budget", "label": "Already paying for alternatives", "detail": "Budget allocated, switching cost is the barrier", "recommended": true, "reasoning": "Existing budget allocation is the strongest WTP signal — it proves the category has established spend."},
+        {"id": "wtp_pain", "label": "Expressed pain in interviews", "detail": "Verbal confirmation but no spend yet", "recommended": false},
+        {"id": "wtp_assumption", "label": "Assumption based on market size", "detail": "No direct signal yet — needs validation", "recommended": false}
+      ]
+    }
+  ]
+}

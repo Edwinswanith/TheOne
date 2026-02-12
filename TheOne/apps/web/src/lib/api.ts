@@ -234,7 +234,46 @@ export interface CanonicalState {
   decisions: Record<string, { selected_option_id: string; recommended_option_id?: string; options?: unknown[]; override?: Record<string, unknown> }>;
   pillars: Record<string, { summary: string }>;
   graph: { nodes: GraphNode[]; edges: unknown[]; groups: GraphGroup[] };
-  risks: { contradictions: unknown[]; missing_proof: unknown[]; high_risk_flags: unknown[] };
+  risks: { contradictions: unknown[]; missing_proof: unknown[]; high_risk_flags: unknown[]; unresolved_contradictions?: unknown[] };
   execution: { chosen_track: string; next_actions: unknown[]; experiments: unknown[]; assets: unknown[] };
   telemetry: { agent_timings: { agent: string; status: string; duration_ms?: number }[] };
+}
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  why: string;
+  category: string;
+  required: boolean;
+  options: ClarificationOption[];
+  allow_custom?: boolean;
+  custom_placeholder?: string;
+}
+
+export interface ClarificationOption {
+  id: string;
+  label: string;
+  detail: string;
+  recommended: boolean;
+  reasoning?: string;
+}
+
+export async function getClarificationQuestions(scenarioId: string): Promise<{ questions: ClarificationQuestion[] }> {
+  return apiFetch(`/scenarios/${scenarioId}/clarification`, { method: "POST" });
+}
+
+export async function submitClarification(
+  scenarioId: string,
+  answers: Record<string, { optionId: string; customValue?: string }>
+): Promise<{ answers_recorded: number; intake_complete: boolean }> {
+  // Convert camelCase keys to snake_case for the Python API
+  const converted: Record<string, { option_id: string; custom_value?: string }> = {};
+  for (const [qid, ans] of Object.entries(answers)) {
+    converted[qid] = { option_id: ans.optionId, custom_value: ans.customValue };
+  }
+  return apiFetch(`/scenarios/${scenarioId}/clarification/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answers: converted }),
+  });
 }

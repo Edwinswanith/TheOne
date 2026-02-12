@@ -14,7 +14,7 @@ import type {
 import * as api from "@/lib/api";
 import { subscribeToRun } from "@/lib/sse";
 
-type Screen = "home" | "chat" | "workspace" | "decisions";
+type Screen = "home" | "chat" | "mcq" | "workspace" | "decisions";
 
 interface ChatMessage {
   role: "assistant" | "user";
@@ -80,6 +80,10 @@ interface AppState {
   nodes: GraphNode[];
   groups: GraphGroup[];
 
+  /* graph drill-down */
+  expandedPillar: string | null;
+  setExpandedPillar: (p: string | null) => void;
+
   /* detail drawer */
   selectedNodeId: string | null;
   selectNode: (id: string | null) => void;
@@ -93,6 +97,17 @@ interface AppState {
   sendChatMessage: (message: string) => Promise<void>;
   initChat: () => Promise<void>;
 
+  /* MCQ intake */
+  mcqQuestions: any[];
+  mcqAnswers: Record<string, { optionId: string; customValue?: string }>;
+  mcqLoading: boolean;
+  loadMcqQuestions: () => Promise<void>;
+  setMcqAnswer: (questionId: string, optionId: string, customValue?: string) => void;
+  submitMcq: () => Promise<void>;
+
+  /* unresolved contradictions */
+  unresolvedContradictions: any[];
+
   /* errors */
   error: string | null;
   clearError: () => void;
@@ -104,10 +119,10 @@ const AGENT_NAMES = [
   "icp_agent",
   "positioning_agent",
   "pricing_agent",
-  "channel_strategy_agent",
+  "channel_agent",
   "sales_motion_agent",
   "product_strategy_agent",
-  "tech_architecture_agent",
+  "tech_feasibility_agent",
   "people_cash_agent",
   "execution_agent",
   "graph_builder",
@@ -182,7 +197,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   openProject: async (projectId, scenarioId) => {
     try {
       const detail = await api.getScenario(scenarioId);
-      const screen = needsIntake(detail.state) ? "chat" : "workspace";
+      const screen = needsIntake(detail.state) ? "mcq" : "workspace";
       set({
         activeProjectId: projectId,
         activeScenarioId: scenarioId,
@@ -314,6 +329,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   nodes: [],
   groups: [],
 
+  expandedPillar: null,
+  setExpandedPillar: (p) => set({ expandedPillar: p }),
+
   selectedNodeId: null,
   selectNode: (id) => set({ selectedNodeId: id }),
 
@@ -375,6 +393,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ chatLoading: false, error: (e as Error).message });
     }
   },
+
+  mcqQuestions: [],
+  mcqAnswers: {},
+  mcqLoading: false,
+
+  loadMcqQuestions: async () => {
+    const sid = get().activeScenarioId;
+    if (!sid) return;
+    set({ mcqLoading: true });
+    try {
+      const res = await api.getClarificationQuestions(sid);
+      set({ mcqQuestions: res.questions, mcqLoading: false, error: null });
+    } catch (e) {
+      set({ mcqLoading: false, error: (e as Error).message });
+    }
+  },
+
+  setMcqAnswer: (questionId, optionId, customValue) => {
+    set((s) => ({
+      mcqAnswers: {
+        ...s.mcqAnswers,
+        [questionId]: { optionId, customValue },
+      },
+    }));
+  },
+
+  submitMcq: async () => {
+    const sid = get().activeScenarioId;
+    if (!sid) return;
+    set({ mcqLoading: true });
+    try {
+      await api.submitClarification(sid, get().mcqAnswers);
+      await get().refreshScenario();
+      set({ screen: "workspace", mcqLoading: false, error: null });
+    } catch (e) {
+      set({ mcqLoading: false, error: (e as Error).message });
+    }
+  },
+
+  unresolvedContradictions: [],
 
   error: null,
   clearError: () => set({ error: null }),

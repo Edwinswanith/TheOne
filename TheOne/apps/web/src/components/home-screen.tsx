@@ -4,13 +4,15 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { CreationProgress } from "@/components/creation-progress";
 import { useSpeechInput } from "@/hooks/use-speech-input";
-import { Plus, TrendingUp, Box, Rocket, Users, Mic, Square, Loader2, AudioLines } from "lucide-react";
+import { Plus, TrendingUp, Box, Rocket, Users, Mic, Square, Loader2, AudioLines, Tag, Zap } from "lucide-react";
 
 const PILLAR_ICONS = [
-  { name: "Market to Money", icon: TrendingUp, desc: "ICP, positioning, pricing, channels" },
-  { name: "Product", icon: Box, desc: "Strategy, architecture, competitive edge" },
-  { name: "Execution", icon: Rocket, desc: "Validation sprints, outbound, assets" },
-  { name: "People & Cash", icon: Users, desc: "Team, funding, runway requirements" },
+  { name: "Market Intelligence", icon: TrendingUp, desc: "Evidence gathering, competitive teardown" },
+  { name: "Customer", icon: Users, desc: "ICP definition, buyer personas, segments" },
+  { name: "Positioning & Pricing", icon: Tag, desc: "Value proposition, pricing models" },
+  { name: "Go-to-Market", icon: Rocket, desc: "Channels, sales motions, outbound" },
+  { name: "Product & Tech", icon: Box, desc: "Strategy, architecture, feasibility" },
+  { name: "Execution", icon: Zap, desc: "Sprints, milestones, team, funding" },
 ];
 
 export function HomeScreen() {
@@ -250,12 +252,12 @@ export function HomeScreen() {
         </div>
       )}
 
-      {/* 4-Pillar overview */}
+      {/* 6-Pillar overview */}
       <div className="mt-12 animate-fade-in" style={{ animationDelay: "0.3s" }}>
         <h2 className="text-xl font-semibold text-ink mb-4 text-center">
-          <span className="sketch-underline">4-Pillar Decision Framework</span>
+          <span className="sketch-underline">6-Pillar Decision Framework</span>
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PILLAR_ICONS.map((pillar) => {
             const Icon = pillar.icon;
             return (

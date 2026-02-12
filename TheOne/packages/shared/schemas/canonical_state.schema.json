@@ -102,7 +102,11 @@
             }
           }
         },
-        "raw_context": { "type": "string" }
+        "raw_context": { "type": "string" },
+        "clarification_responses": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
       }
     },
     "evidence": {
@@ -117,7 +121,10 @@
         "competitors": { "type": "array", "items": { "type": "object" } },
         "pricing_anchors": { "type": "array", "items": { "type": "object" } },
         "messaging_patterns": { "type": "array", "items": { "type": "object" } },
-        "channel_signals": { "type": "array", "items": { "type": "object" } }
+        "channel_signals": { "type": "array", "items": { "type": "object" } },
+        "teardowns": { "type": "array", "items": { "type": "object" } },
+        "weakness_map": { "type": "array", "items": { "type": "object" } },
+        "positioning_map": { "type": "array", "items": { "type": "object" } }
       }
     },
     "decisions": {
@@ -174,12 +181,14 @@
     "pillars": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["market_to_money", "product", "execution", "people_and_cash"],
+      "required": ["market_intelligence", "customer", "positioning_pricing", "go_to_market", "product_tech", "execution"],
       "properties": {
-        "market_to_money": { "$ref": "#/$defs/PillarBlock" },
-        "product": { "$ref": "#/$defs/PillarBlock" },
-        "execution": { "$ref": "#/$defs/PillarBlock" },
-        "people_and_cash": { "$ref": "#/$defs/PillarBlock" }
+        "market_intelligence": { "$ref": "#/$defs/PillarBlock" },
+        "customer": { "$ref": "#/$defs/PillarBlock" },
+        "positioning_pricing": { "$ref": "#/$defs/PillarBlock" },
+        "go_to_market": { "$ref": "#/$defs/PillarBlock" },
+        "product_tech": { "$ref": "#/$defs/PillarBlock" },
+        "execution": { "$ref": "#/$defs/PillarBlock" }
       }
     },
     "graph": {
@@ -215,6 +224,10 @@
           "items": { "type": "object" }
         },
         "high_risk_flags": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "unresolved_contradictions": {
           "type": "array",
           "items": { "type": "object" }
         }

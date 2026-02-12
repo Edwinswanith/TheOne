@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from services.api.app.schemas import (
     ChatMessageRequest,
+    ClarificationSubmitRequest,
     DecisionSelectRequest,
     ExecutionTrackRequest,
     ExportRequest,
@@ -306,6 +307,69 @@ async def patch_scenario(scenario_id: str, payload: ScenarioPatchRequest) -> dic
         "project_id": scenario.project_id,
         "name": scenario.name,
         "updated_at": scenario.updated_at,
+    }
+
+
+@app.post("/scenarios/{scenario_id}/clarification")
+async def get_clarification_questions(scenario_id: str) -> dict[str, Any]:
+    scenario = _get_scenario(scenario_id)
+
+    # Return cached questions if already generated
+    cached = scenario.state["inputs"].get("clarification_responses")
+    if cached and isinstance(cached, list) and len(cached) > 0 and isinstance(cached[0], dict) and "question" in cached[0]:
+        return {"scenario_id": scenario_id, "questions": cached}
+
+    # Generate via provider
+    provider = ProviderClient()
+    result = provider.generate_clarification_questions(scenario.state)
+
+    questions = result.get("questions", [])
+    scenario.state["meta"]["updated_at"] = store.now().isoformat()
+    _commit_state(scenario, scenario.state["meta"].get("run_id", "unset"))
+
+    return {"scenario_id": scenario_id, "questions": questions}
+
+
+@app.post("/scenarios/{scenario_id}/clarification/submit")
+async def submit_clarification(scenario_id: str, payload: ClarificationSubmitRequest) -> dict[str, Any]:
+    scenario = _get_scenario(scenario_id)
+
+    # Store raw clarification responses
+    scenario.state["inputs"]["clarification_responses"] = [
+        {"question_id": qid, **answer_data}
+        for qid, answer_data in payload.answers.items()
+    ]
+
+    # Map required fields to intake_answers
+    required_field_map = {
+        "buyer_role": "buyer_role",
+        "company_type": "company_type",
+        "trigger_event": "trigger_event",
+        "current_workaround": "current_workaround",
+        "measurable_outcome": "measurable_outcome",
+    }
+
+    intake_answers = []
+    for qid, answer_data in payload.answers.items():
+        if qid in required_field_map:
+            value = answer_data.get("custom_value") or answer_data.get("option_id", "")
+            intake_answers.append({
+                "question_id": qid,
+                "answer_type": "mcq",
+                "value": value,
+                "meta": {"source_type": "inference", "confidence": 0.8, "sources": []},
+            })
+
+    if intake_answers:
+        scenario.state["inputs"]["intake_answers"] = intake_answers
+
+    scenario.state["meta"]["updated_at"] = store.now().isoformat()
+    _commit_state(scenario, run_id=scenario.state["meta"].get("run_id", "unset"))
+
+    return {
+        "scenario_id": scenario_id,
+        "answers_recorded": len(payload.answers),
+        "intake_complete": len(intake_answers) >= 5,
     }
 
 

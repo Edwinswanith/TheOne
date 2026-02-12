@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "2.0.0"
 
 
 def utc_now_iso() -> str:
@@ -49,6 +49,7 @@ def _base_state() -> dict[str, Any]:
         "inputs": {
             "intake_answers": [],
             "open_questions": [],
+            "clarification_responses": [],
         },
         "evidence": {
             "sources": [],
@@ -56,6 +57,9 @@ def _base_state() -> dict[str, Any]:
             "pricing_anchors": [],
             "messaging_patterns": [],
             "channel_signals": [],
+            "teardowns": [],
+            "weakness_map": [],
+            "positioning_map": [],
         },
         "decisions": {
             "icp": _empty_decision(),
@@ -77,25 +81,30 @@ def _base_state() -> dict[str, Any]:
             },
         },
         "pillars": {
-            "market_to_money": {"summary": "", "nodes": []},
-            "product": {"summary": "", "nodes": []},
-            "execution": {"summary": "", "nodes": []},
-            "people_and_cash": {"summary": "", "nodes": []},
+            "market_intelligence": {"summary": "", "nodes": []},
+            "customer": {"summary": "", "nodes": [], "objection_map": []},
+            "positioning_pricing": {"summary": "", "nodes": []},
+            "go_to_market": {"summary": "", "nodes": [], "messaging_templates": []},
+            "product_tech": {"summary": "", "nodes": [], "mvp_features": [], "roadmap_phases": []},
+            "execution": {"summary": "", "nodes": [], "team_plan": {}, "budget_allocation": {}, "playbook": [], "kill_criteria": [], "kpi_thresholds": []},
         },
         "graph": {
             "nodes": [],
             "edges": [],
             "groups": [
-                {"id": "group.market_to_money", "title": "Market to Money", "node_ids": []},
-                {"id": "group.product", "title": "Product", "node_ids": []},
+                {"id": "group.market_intelligence", "title": "Market Intelligence", "node_ids": []},
+                {"id": "group.customer", "title": "Customer", "node_ids": []},
+                {"id": "group.positioning_pricing", "title": "Positioning & Pricing", "node_ids": []},
+                {"id": "group.go_to_market", "title": "Go-to-Market", "node_ids": []},
+                {"id": "group.product_tech", "title": "Product & Tech", "node_ids": []},
                 {"id": "group.execution", "title": "Execution", "node_ids": []},
-                {"id": "group.people_and_cash", "title": "People and Cash", "node_ids": []},
             ],
         },
         "risks": {
             "contradictions": [],
             "missing_proof": [],
             "high_risk_flags": [],
+            "unresolved_contradictions": [],
         },
         "execution": {
             "chosen_track": "unset",

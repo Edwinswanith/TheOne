@@ -123,14 +123,14 @@ def run_validator(
 
     if state["constraints"].get("compliance_level") == "high":
         has_security_node = any(node.get("id") == "product.security_plan" for node in state["graph"].get("nodes", []))
-        has_security_summary = bool(state["pillars"]["execution"].get("security_plan", ""))
+        has_security_summary = bool(state["pillars"]["product_tech"].get("security_plan", ""))
         if finalize and not (has_security_node or has_security_summary):
             add_contradiction(
                 _contradiction(
                     "V-TECH-01",
                     "critical",
                     "High compliance requires a security/data handling plan.",
-                    ["/constraints/compliance_level", "/pillars/execution/security_plan"],
+                    ["/constraints/compliance_level", "/pillars/product_tech/security_plan"],
                 )
             )
 
@@ -179,14 +179,14 @@ def run_validator(
             )
         )
 
-    people_empty = not state["pillars"]["people_and_cash"].get("summary")
-    if pricing_metric and people_empty:
+    execution_team_empty = not state["pillars"]["execution"].get("team_plan")
+    if pricing_metric and execution_team_empty:
         contradictions.append(
             _contradiction(
                 "V-PEOPLE-01",
                 "medium",
-                "People and cash pillar is under-defined relative to pricing decision.",
-                ["/pillars/people_and_cash", "/decisions/pricing"],
+                "Execution team plan is under-defined relative to pricing decision.",
+                ["/pillars/execution/team_plan", "/decisions/pricing"],
             )
         )
 
