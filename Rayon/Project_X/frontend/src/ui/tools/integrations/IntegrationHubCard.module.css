@@ -1,0 +1,109 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+.card:hover {
+  background: var(--bg-hover);
+}
+.card.connected {
+  background: rgba(74, 222, 128, 0.04);
+}
+.card.connected:hover {
+  background: rgba(74, 222, 128, 0.08);
+}
+.card.active {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.card.active:hover {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+/* Icon */
+.icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.connected .icon {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--status-success);
+}
+
+/* Body */
+.body {
+  flex: 1;
+  min-width: 0;
+}
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  flex-shrink: 0;
+}
+.gatewayDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.activeBadge {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chevron */
+.chevron {
+  color: var(--text-muted);
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast);
+}
+.card:hover .chevron {
+  opacity: 1;
+}
